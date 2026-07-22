@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 6 · The warehouse in the AI era - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Leader session 6 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Leader track · Session 6 of 6</div>
+    <h1>The warehouse in the <span class="accent">AI era</span></h1>
+    <p class="sub">Every AI ambition in your company - the churn model, the copilot, the "agent that answers business questions" - lands on the same foundation: the warehouse. In this final session we look at who the warehouse serves beyond dashboards, when real-time is worth its price tag, and the crawl-walk-run roadmap that turns everything from a1-a5 into a plan. Daybreak wants an AI assistant for its support team; whether that works is decided in the warehouse.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-20 · Serving beyond dashboards</span>
+      <span class="a3" style="flex:5">20-42 · Real-time + roadmap</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>How this session works</h2>
+    </div>
+    <p class="lede">Five sessions ago the warehouse was a copy of the app database for dashboards. Today we finish the picture: the same governed tables now feed machine learning, AI agents, and the operational tools your teams live in. The stakes changed with the customers - a wrong number on a dashboard misleads one meeting; a wrong number inside an AI system misleads every conversation it has, confidently. Then we close the track with a roadmap you can put on one slide.</p>
+    <div class="legend">
+      <span class="pill solid">Live - discussed in session</span>
+      <span class="pill light">Self-study - read after</span>
+      <span class="pill inkpill">For decision-makers</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A map of the warehouse's four modern customers, an honest calibration on real-time (most decisions are fine at daily; streaming costs 5-10x), the crawl-walk-run roadmap for your own company, and the quarterly questions that keep it moving.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: NEW CUSTOMERS ============ -->
+  <section class="section" id="serving">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI Data Engineering C4 M4 - serving data for analytics AND machine learning</span>
+      <h2>The warehouse's new customers <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">Joe Reis's data engineering curriculum makes a point most AI strategy decks skip: <strong>serving</strong> is the last mile of data engineering, and analytics is only one of its destinations. The same warehouse now serves four customers - and the newest ones are the least forgiving of bad data, because they never pause to ask "does this look right?"</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One warehouse serving four consumers: dashboards, ML features, AI agents, and reverse ETL to business tools">
+        <style>
+          .scH { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .scT { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .scB { font: 400 12px Inter, sans-serif; fill: #FFFFFF; }
+          .scC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .scN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .scArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#scAh); }
+        </style>
+        <defs>
+          <marker id="scAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <rect x="40" y="120" width="220" height="120" rx="10" fill="#26435C"/>
+        <text class="scH" x="56" y="150">The warehouse</text>
+        <text class="scB" x="56" y="176">governed · fresh · defined</text>
+        <text class="scB" x="56" y="196">one set of numbers,</text>
+        <text class="scB" x="56" y="216">tested before serving</text>
+
+        <rect x="480" y="30" width="360" height="64" rx="10" fill="#3E6B8F"/>
+        <text class="scH" x="496" y="56">1 · Dashboards &amp; BI</text>
+        <text class="scB" x="496" y="78">the classic customer - humans reading charts</text>
+        <rect x="480" y="110" width="360" height="64" rx="10" fill="#3E6B8F"/>
+        <text class="scH" x="496" y="136">2 · ML features</text>
+        <text class="scB" x="496" y="158">churn scores, forecasts - models eat warehouse tables</text>
+        <rect x="480" y="190" width="360" height="64" rx="10" fill="#5E8CB0"/>
+        <text class="scH" x="496" y="216">3 · AI agents &amp; RAG</text>
+        <text class="scB" x="496" y="238">assistants answering from your governed numbers</text>
+        <rect x="480" y="270" width="360" height="64" rx="10" fill="#5E8CB0"/>
+        <text class="scH" x="496" y="296">4 · Reverse ETL to tools</text>
+        <text class="scB" x="496" y="318">scores pushed back into CRM, ads, support desks</text>
+
+        <path class="scArr" d="M260,150 C360,130 400,80 476,64"/>
+        <path class="scArr" d="M260,175 C350,165 400,148 476,143"/>
+        <path class="scArr" d="M260,200 C350,208 400,218 476,221"/>
+        <path class="scArr" d="M260,225 C360,250 400,290 476,300"/>
+
+        <rect x="40" y="340" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="scN" x="64" y="352">Customers 2-4 never ask "does this look right?" - a garbage warehouse makes AI confidently wrong.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one governed warehouse, four consumers, rising stakes down the list</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why AI raises the stakes on data quality<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A dashboard has a built-in safety net: a human looks at it. When the churn number looks weird, someone says so before the board sees it. AI systems remove that net. A model trained on mislabeled subscriptions learns the mistake. An agent answering from a warehouse where "revenue" still has two definitions (the a3 problem) picks one at random and answers fluently. The failure mode of AI on bad data is not silence - it is <strong>confident wrongness at scale</strong>.</p>
+        <ul>
+          <li><strong>ML features:</strong> models consume warehouse tables as ingredients - "days since last order", "orders per month". Wrong ingredients, wrong predictions, discovered months later in the metrics.</li>
+          <li><strong>AI agents and RAG:</strong> assistants ground their answers in your data. The grounding is only as good as the definitions and freshness underneath - a1 to a3 were secretly your AI-readiness sessions.</li>
+          <li><strong>Reverse ETL:</strong> warehouse scores flow back into CRM and support tools, where frontline staff act on them directly. The warehouse stops describing the business and starts steering it.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The copilot that failed its demo.</strong> A retail exec team piloted an AI assistant over their data. First question: "what was revenue last quarter?" The agent answered with the finance definition; the CFO had the product-dashboard number in hand; the two differed by the familiar refund gap. The pilot was paused - not because the AI was weak, but because the warehouse had never settled one definition of revenue. Six months of definition work later, the same assistant passed. The AI project was a warehouse project wearing a costume.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Views and materialized views: how serving actually happens<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>One mechanism from the DLAI curriculum worth knowing by name. A <strong>view</strong> is a saved question - "active subscribers" defined once, referenced everywhere, so every consumer inherits the same definition. A <strong>materialized view</strong> is that same question with the answer pre-computed and stored (a5's lever 3). Together they are how one definition serves all four customers consistently: the dashboard, the model, and the agent all read "active subscribers" from the same governed shelf. Builder session b7 constructs these for Daybreak.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Daybreak's four customers, concretely<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The abstract map, made specific with our running case:</p>
+        <ul>
+          <li><strong>Dashboard:</strong> the founder's Monday view - revenue by month, churn by cohort. The classic customer from a1, still the workhorse.</li>
+          <li><strong>ML feature:</strong> the churn model reads "days since last order" and "orders per month" from warehouse tables to score every subscriber weekly. If order dates are wrong upstream, the model quietly learns nonsense.</li>
+          <li><strong>AI agent:</strong> the support assistant answering "what plan is this customer on, and what did they last order?" from governed tables. Wrong data here reaches a customer's ears in seconds.</li>
+          <li><strong>Reverse ETL:</strong> the churn scores flow back into the support desk, so agents see "high churn risk" next to the ticket. The warehouse now steers frontline behavior, not just meetings.</li>
+        </ul>
+        <p>One warehouse, four exits. Every exit inherits whatever quality - or whatever mess - lives in the tables.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: REAL-TIME, HONESTLY ============ -->
+  <section class="section" id="realtime">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers 365DS real-time data warehousing</span>
+      <h2>Real-time, priced honestly <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">Every vendor demo now ends with "and it's real-time". Here is the executive calibration: real-time is a genuine capability with a genuine price, and <strong>most business decisions are perfectly served by yesterday's data</strong>. The question is never "can we be real-time?" - it is "which decision, exactly, changes if this number is 5 minutes old instead of 24 hours old?"</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The freshness ladder: match latency to the decision<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Think in three rungs, each roughly an order of magnitude more expensive to operate than the one below:</p>
+        <ul>
+          <li><strong>Daily batch (the workhorse):</strong> board reports, finance, marketing reviews, churn models, almost every dashboard. The warehouse loads overnight; the business runs on it. This rung covers the large majority of decisions in a typical company.</li>
+          <li><strong>Hourly / near-real-time:</strong> operational monitoring - today's orders, campaign spend pacing, inventory alerts. Worth it where someone acts within the hour.</li>
+          <li><strong>Streaming (seconds):</strong> fraud detection, live personalization, logistics tracking. Real engineering, real on-call, real money - typically 5-10x the cost of batch for the same data. Buy it per use case, never as a platform-wide default.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The one-question filter</strong>
+          For any real-time request: "who acts on this within minutes, and what do they do differently?" A named person with a named action justifies the rung. "It would be nice to see" does not - that is a daily dashboard wearing a streaming price tag.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>"Zero-ETL" and other claims to hear skeptically<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Two phrases from the 2026 vendor floor deserve a leader's raised eyebrow:</p>
+        <ul>
+          <li><strong>"Zero-ETL":</strong> usually means the vendor moves raw data automatically between their own products. Genuinely convenient - but the modeling, definitions, and quality work of a2-a3 does not disappear; it just stops being visible on the diagram. Nobody has automated deciding what "active customer" means.</li>
+          <li><strong>"Real-time by default":</strong> ask what the default costs at your volume, and which of your decisions consumed the freshness. Paying streaming prices for daily decisions is the a5 amber band in a new outfit.</li>
+          <li><strong>The lakehouse convergence (the real trend):</strong> warehouses and lakehouses are genuinely growing together - warehouses read open lake formats, lakehouses add governance. Directionally true and good for buyers: it keeps exit doors open. The label on the box matters less every year; the discipline inside it does not change.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The streaming bill for a daily decision.</strong> A subscription company built a beautiful streaming pipeline so the exec dashboard updated live. Cost: roughly 8x the batch equivalent. A year in, the team audited usage: the dashboard was opened each morning, once, with coffee. The pipeline was moved back to hourly; nobody noticed except finance. The lesson stuck as a one-liner: pay for the freshness the decision uses, not the freshness the demo showed.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: ROADMAP ============ -->
+  <section class="section" id="roadmap">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the plan on one slide</span>
+      <h2>Crawl, walk, run - and what to ask quarterly <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">Everything in this track compresses to one strip. Companies that skip crawl to buy run-stage tools get the a4 lakehouse story; companies that stay in crawl forever starve their AI ambitions. The skill is knowing which stage you are in and funding the next one, not the flashiest one.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Crawl walk run roadmap: daily batch star schema, then tested definitions and marts, then real-time slices and feature serving">
+        <style>
+          .rmH { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .rmT { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .rmB { font: 400 12px Inter, sans-serif; fill: #FFFFFF; }
+          .rmC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .rmN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .rmArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#rmAh); }
+        </style>
+        <defs>
+          <marker id="rmAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="rmT" x="40" y="36">The warehouse roadmap on one strip</text>
+        <rect x="40" y="60" width="240" height="150" rx="10" fill="#5E8CB0"/>
+        <text class="rmH" x="56" y="88">CRAWL</text>
+        <text class="rmB" x="56" y="114">daily batch loads</text>
+        <text class="rmB" x="56" y="134">one star schema</text>
+        <text class="rmB" x="56" y="154">one mart, one team served</text>
+        <text class="rmB" x="56" y="174">definitions written down</text>
+        <rect x="320" y="60" width="240" height="150" rx="10" fill="#3E6B8F"/>
+        <text class="rmH" x="336" y="88">WALK</text>
+        <text class="rmB" x="336" y="114">tested definitions</text>
+        <text class="rmB" x="336" y="134">more marts, more teams</text>
+        <text class="rmB" x="336" y="154">monthly cost review (a5)</text>
+        <text class="rmB" x="336" y="174">quality checks before serving</text>
+        <rect x="600" y="60" width="240" height="150" rx="10" fill="#26435C"/>
+        <text class="rmH" x="616" y="88">RUN</text>
+        <text class="rmB" x="616" y="114">near-real-time slices</text>
+        <text class="rmB" x="616" y="134">where money justifies it</text>
+        <text class="rmB" x="616" y="154">features served to ML + AI</text>
+        <text class="rmB" x="616" y="174">reverse ETL into the tools</text>
+        <path class="rmArr" d="M280,135 C295,135 300,135 316,135"/>
+        <path class="rmArr" d="M560,135 C575,135 580,135 596,135"/>
+        <text class="rmC" x="40" y="242">Each stage earns the next: run-stage AI on crawl-stage definitions produces confidently wrong answers.</text>
+        <text class="rmC" x="40" y="262">Most companies belong in walk. Run is bought per use case, not as a platform badge.</text>
+        <rect x="40" y="286" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="rmN" x="64" y="298">Locate your company on this strip today - that answer sets next year's data budget.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - crawl, walk, run: each stage earns the next</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Four questions to ask your team quarterly<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ol>
+          <li><strong>"Which stage are we in, and what moves us to the next?"</strong> Forces an honest self-placement and a concrete gap list - the answer should name deliverables, not tools.</li>
+          <li><strong>"Which definitions did we test this quarter?"</strong> The walk-stage heartbeat. If the answer is none, your AI ambitions are drifting toward the failed-copilot demo.</li>
+          <li><strong>"What is the freshest data any decision actually consumed?"</strong> Keeps real-time honest: if nothing used sub-daily freshness, nothing should be paying for it.</li>
+          <li><strong>"If we pointed an AI agent at the warehouse tomorrow, what would embarrass us?"</strong> The best audit question of the AI era - it surfaces the two-definitions problem, stale tables, and ungoverned corners in one sentence.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where to go from here<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>This closes the leader track: a1-a3 gave you the why (workloads, star schemas, one truth), a4-a5 the buying and running (engines, contracts, cost), and a6 the future (AI serving, real-time judgment, the roadmap). Three good next doors:</p>
+        <ul>
+          <li><strong>The builder track of this course (b1-b10):</strong> the same Daybreak story hands-on - a real columnar engine in your browser, from raw source to served answer. Skim b1 even as a non-coder; you will recognize everything.</li>
+          <li><strong>learn-data-engineering:</strong> the pipelines that feed the warehouse - where the data comes from and how it arrives on schedule.</li>
+          <li><strong>learn-ai-governance:</strong> the oversight layer for the AI systems this session put on top of your warehouse - risk tiers, obligations, and the questions regulators ask.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Between sessions</span>
+      <h2>Take this back to your desk <span class="tag exercise">◐ 20 min</span></h2>
+    </div>
+    <ul>
+      <li>Place your company on the crawl-walk-run strip, then ask your data lead to place it independently. A one-stage disagreement is normal and worth an hour's conversation.</li>
+      <li>List every AI initiative currently proposed or running in your org, and for each ask: which warehouse tables does it depend on, and who owns their quality?</li>
+      <li>Find one thing your company pays real-time or hourly prices for, and apply the filter: who acts on it within minutes, and what do they do differently?</li>
+      <li>Ask the embarrassment question in your next data review: "if we pointed an AI agent at our warehouse tomorrow, what would embarrass us?" Write down the first three answers - that is your data-quality backlog, pre-prioritized.</li>
+      <li>Put the four quarterly questions in your calendar for next quarter's review. The track's value compounds only if the rituals survive the course.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">The leader track distills the strategy layer of the major curricula - serving, freshness, and roadmap judgment, without the pipeline labs. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DeepLearning.AI Data Engineering C4 (Joe Reis) M4 - serving data for analytics &amp; ML, views + materialized views</span><span class="note">Part 1 · the four customers, exec altitude; b7 builds the views</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - real-time data warehousing (S7)</span><span class="note">Part 2 · the freshness ladder and its honest price tags</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">IBM Data Warehouse Fundamentals - architecture &amp; governance threads</span><span class="note">Part 3 · roadmap framing; module depth lives in a1-a4 and the builder track</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Why does putting an AI agent on top of the warehouse RAISE the stakes on data quality?</p>
+      <button class="qopt" type="button">A · AI systems use more storage than dashboards</button>
+      <button class="qopt" type="button">B · Dashboards have a human safety net; an agent answers fluently from bad data with no one checking - confidently wrong, at scale</button>
+      <button class="qopt" type="button">C · It does not - AI models clean the data themselves</button>
+      <p class="qwhy">A human notices when a chart looks weird. An agent grounded in stale or double-defined data just answers. The a1-a3 definition work was secretly your AI-readiness program.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · A team requests streaming freshness for the executive revenue dashboard. The leader's filter question is...</p>
+      <button class="qopt" type="button">A · "Does our engine support streaming?"</button>
+      <button class="qopt" type="button">B · "How much does the vendor charge for it?"</button>
+      <button class="qopt" type="button">C · "Who acts on this within minutes, and what do they do differently?"</button>
+      <p class="qwhy">Capability and price come second. Most decisions are fine at daily; streaming costs 5-10x batch. A named person with a named minute-level action justifies the rung - "nice to see" does not.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Your company has one daily-loaded star schema, one mart, and definitions written down but not tested. The right next investment is...</p>
+      <button class="qopt" type="button">A · Walk-stage work: test the definitions, add marts, start the monthly cost review</button>
+      <button class="qopt" type="button">B · Run-stage work: streaming pipelines and an AI agent, to leapfrog competitors</button>
+      <button class="qopt" type="button">C · Rebuild everything as a lakehouse first</button>
+      <p class="qwhy">That description is the end of crawl. Each stage earns the next: run-stage AI on untested definitions produces the failed copilot demo. Fund the next stage, not the flashiest one.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 6 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Four customers</b><span>Dashboards, ML features, AI agents/RAG, reverse ETL into tools. One governed warehouse serves all four.</span></div>
+      <div class="cheat-item"><b>The AI stakes</b><span>Dashboards have human safety nets; AI does not. Garbage warehouse = confidently wrong AI, at scale.</span></div>
+      <div class="cheat-item"><b>Views</b><span>A definition saved once, inherited everywhere - how "active subscriber" stays one number across all consumers.</span></div>
+      <div class="cheat-item"><b>Freshness ladder</b><span>Daily batch serves most decisions. Hourly for operations. Streaming (5-10x cost) only where someone acts in minutes.</span></div>
+      <div class="cheat-item"><b>"Zero-ETL"</b><span>Convenient data movement - but modeling, definitions, and quality work do not disappear. Nobody automated deciding what "active" means.</span></div>
+      <div class="cheat-item"><b>Convergence trend</b><span>Warehouses and lakehouses are merging around open formats. Good for buyers - exit doors stay open. Discipline stays the same.</span></div>
+      <div class="cheat-item"><b>Crawl-walk-run</b><span>Crawl: daily star schema + one mart. Walk: tested definitions, more marts, cost review. Run: real-time slices + feature serving, per use case.</span></div>
+      <div class="cheat-item"><b>The audit question</b><span>"If we pointed an AI agent at the warehouse tomorrow, what would embarrass us?" Ask it quarterly.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 6 of 6 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a5-cost-and-performance.html">← Prev: Cost and performance</a> &nbsp;·&nbsp; <a href="b1-row-store-column-store.html">Continue: Builder track session 1 →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

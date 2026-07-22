@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 4 · The buy landscape - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Leader session 4 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Leader track · Session 4 of 6</div>
+    <h1>The <span class="accent">buy</span> landscape</h1>
+    <p class="sub">Sooner or later a vendor deck lands on your desk: warehouse, lake, lakehouse, five engines, three pricing models, one confident salesperson. This session gives you the map - what each estate actually is, how the major engines differ where it matters to a buyer, and the ten questions that separate a good contract from an expensive lesson. Daybreak, our coffee-subscription brand, is shopping too.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-20 · Warehouse vs lake vs lakehouse</span>
+      <span class="a3" style="flex:5">20-42 · Engines + vendor questions</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>How this session works</h2>
+    </div>
+    <p class="lede">Sessions a1-a3 built the why: analytics needs its own copy of the data, shaped as a star schema, with one agreed set of definitions. Today is the shopping trip. We compare the three storage estates, then walk the 2026 engine landscape - Snowflake, BigQuery, Redshift, Databricks, and the humble free tier - the way a buyer should: by pricing shape and failure mode, not by feature checklists. You leave with a vendor-meeting script.</p>
+    <div class="legend">
+      <span class="pill solid">Live - discussed in session</span>
+      <span class="pill light">Self-study - read after</span>
+      <span class="pill inkpill">For decision-makers</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A one-line definition of warehouse, lake, and lakehouse you can say without notes; a feel for how each major engine charges and where each one bites; IBM's four selection criteria as your scoring sheet; and ten questions that make any vendor visibly recalculate.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THREE ESTATES ============ -->
+  <section class="section" id="estates">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers IBM DW Fundamentals M1 (data lakes &amp; lakehouses), 365DS S7</span>
+      <h2>Warehouse, lake, lakehouse: three estates <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">Think of your company's data as property. A <strong>warehouse</strong> is the finished office building: structured, modeled, governed, every desk labeled - dashboards plug straight in. A <strong>lake</strong> is the cheap land next door: raw files of any shape, stored for pennies, order optional. A <strong>lakehouse</strong> is the newest build: warehouse-style tables constructed directly on lake files, one estate trying to serve both crowds.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three estates: warehouse holds modeled tables, lake holds raw files, lakehouse puts tables on lake files">
+        <style>
+          .beH { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .beB { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .beI { font: 600 12px Inter, sans-serif; fill: #1C2833; }
+          .beC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .beN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+        </style>
+        <rect x="30" y="24" width="260" height="30" rx="6" fill="#26435C"/>
+        <text class="beH" x="46" y="44">Data warehouse</text>
+        <rect x="30" y="54" width="260" height="200" rx="6" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <rect x="46" y="72" width="228" height="30" rx="5" fill="#3E6B8F"/>
+        <text class="beB" x="58" y="92">modeled tables, typed + tested</text>
+        <rect x="46" y="112" width="228" height="30" rx="5" fill="#3E6B8F"/>
+        <text class="beB" x="58" y="132">one set of metric definitions</text>
+        <rect x="46" y="152" width="228" height="30" rx="5" fill="#3E6B8F"/>
+        <text class="beB" x="58" y="172">dashboards plug straight in</text>
+        <rect x="46" y="192" width="228" height="30" rx="5" fill="#FFFFFF" stroke="#E3EAF0"/>
+        <text class="beI" x="58" y="212">costlier per TB, worth it</text>
+        <text class="beC" x="30" y="278">structured · governed · query-ready</text>
+
+        <rect x="310" y="24" width="260" height="30" rx="6" fill="#5E8CB0"/>
+        <text class="beH" x="326" y="44">Data lake</text>
+        <rect x="310" y="54" width="260" height="200" rx="6" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <rect x="326" y="72" width="228" height="30" rx="5" fill="#5E8CB0"/>
+        <text class="beB" x="338" y="92">raw files: logs, JSON, images</text>
+        <rect x="326" y="112" width="228" height="30" rx="5" fill="#5E8CB0"/>
+        <text class="beB" x="338" y="132">cheap object storage</text>
+        <rect x="326" y="152" width="228" height="30" rx="5" fill="#5E8CB0"/>
+        <text class="beB" x="338" y="172">data scientists explore here</text>
+        <rect x="326" y="192" width="228" height="30" rx="5" fill="#FFFFFF" stroke="#E3EAF0"/>
+        <text class="beI" x="338" y="212">no order unless you add it</text>
+        <text class="beC" x="310" y="278">cheap · flexible · ungoverned by default</text>
+
+        <rect x="590" y="24" width="260" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="beH" x="606" y="44">Lakehouse</text>
+        <rect x="590" y="54" width="260" height="200" rx="6" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <rect x="606" y="72" width="228" height="30" rx="5" fill="#26435C"/>
+        <text class="beB" x="618" y="92">warehouse tables ON lake files</text>
+        <rect x="606" y="112" width="228" height="30" rx="5" fill="#26435C"/>
+        <text class="beB" x="618" y="132">open formats: Parquet, Delta</text>
+        <rect x="606" y="152" width="228" height="30" rx="5" fill="#26435C"/>
+        <text class="beB" x="618" y="172">one estate, both audiences</text>
+        <rect x="606" y="192" width="228" height="30" rx="5" fill="#FFFFFF" stroke="#E3EAF0"/>
+        <text class="beI" x="618" y="212">newest, most moving parts</text>
+        <text class="beC" x="590" y="278">the merge - Databricks' home turf</text>
+
+        <rect x="30" y="304" width="820" height="1" fill="#E3EAF0"/>
+        <text class="beC" x="30" y="332">The vendor pitch order is lake then lakehouse then warehouse. The buying order is usually the reverse.</text>
+        <rect x="30" y="352" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="beN" x="54" y="364">Most mid-size companies need a warehouse first. The estate debate can wait until one exists.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - three estates, what lives in each, and which to buy first</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Which estate does Daybreak actually need?<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Daybreak's questions are revenue by month, churn by cohort, subscription health - structured questions about structured data. That is warehouse work, full stop. A lake earns its keep when you have data that will not fit tables: clickstream logs, support-call audio, product photos for a future ML model. A lakehouse earns its keep when both of those are true at real scale and you have engineers to run it.</p>
+        <ul>
+          <li><strong>Warehouse first:</strong> if your pain is "reports are slow and numbers disagree" (a1-a3), the warehouse is the cure. Every dashboard question in this course is warehouse-shaped.</li>
+          <li><strong>Lake when raw piles up:</strong> cheap parking for data you cannot model yet. Without governance it quietly becomes the "data swamp" - IBM's course names this failure mode.</li>
+          <li><strong>Lakehouse when both crowds are real:</strong> analysts and ML teams sharing one governed estate. Genuinely good technology - and more moving parts than a young data team should own.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The lakehouse bought too early.</strong> A 200-person retailer bought a full lakehouse platform because the demo was dazzling. Eighteen months later, 95% of usage was plain SQL dashboards - warehouse work carrying lakehouse operational overhead. The board asked what the extra spend had bought. Nobody had a good answer. The right sequence was a warehouse now, the lakehouse conversation at the next scale-up.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Say each one in a sentence<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Board-meeting definitions, no jargon debt:</p>
+        <ul>
+          <li><strong>Warehouse:</strong> "the structured, governed copy of our data that answers business questions fast."</li>
+          <li><strong>Lake:</strong> "cheap storage for raw data we have not modeled yet - useful, but not answers."</li>
+          <li><strong>Lakehouse:</strong> "warehouse-style tables built directly on lake files, so one system serves analysts and ML."</li>
+          <li><strong>The trend to know:</strong> the estates are converging - warehouses read lake files, lakehouses add governance. Session a6 returns to this. The labels matter less every year; the discipline (modeling, definitions, governance) matters exactly as much.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: ENGINES ============ -->
+  <section class="section" id="engines">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers IBM M1 popular systems + selecting a system, 365DS cloud vs on-prem</span>
+      <h2>The engine landscape, buyer's cut <span class="tag concept">9 min live</span></h2>
+    </div>
+    <p class="lede">Five names cover most shortlists in mid-2026. Do not memorize features - they converge within a year of each other. Learn each engine's <strong>pricing shape</strong> and its <strong>watch-out</strong>, because that is what still differs when the feature war is a tie. One health warning before the table: pricing moves fast - treat this as the shape of each deal, and re-verify numbers the week you buy.</p>
+
+    <table class="clean">
+      <thead><tr><th>Engine</th><th>Best for</th><th>Pricing shape</th><th>Watch out</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Snowflake</strong></td><td>Multi-cloud enterprise default; separated storage and compute</td><td>Credits per second of compute; storage billed separately</td><td>Warehouses that never auto-sleep burn credits around the clock</td></tr>
+        <tr><td><strong>BigQuery</strong></td><td>Serverless, near-zero ops, Google Cloud shops</td><td>Pay per TB scanned, or flat slot commitments</td><td>One careless SELECT * over a huge table is real money</td></tr>
+        <tr><td><strong>Redshift</strong></td><td>AWS-committed estates, deep AWS integration</td><td>Cluster (provisioned) or serverless</td><td>Provisioned clusters bill while idle; sizing is on you</td></tr>
+        <tr><td><strong>Databricks</strong></td><td>Lakehouse-first: analytics plus serious ML, Delta Lake native</td><td>Compute units (DBUs) on top of your cloud bill</td><td>A power tool - assumes engineers who can hold it</td></tr>
+        <tr><td><strong>DuckDB + Postgres</strong></td><td>Laptop-scale analytics; a small company's first warehouse</td><td>Free, open source</td><td>Single node - Postgres strains as a warehouse near ~100 GB</td></tr>
+      </tbody>
+    </table>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>IBM's four selection criteria - your scoring sheet<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>IBM's fundamentals course boils system selection down to four criteria. Use them as columns in a scoring sheet and the vendor conversation becomes yours, not theirs:</p>
+        <ul>
+          <li><strong>Features and usability:</strong> can your actual team - not the demo engineer - use it day one? Weight usability over feature count; unused features cost money anyway.</li>
+          <li><strong>Compatibility:</strong> does it plug into your BI tool, your sources, your cloud? A cheap engine that needs six custom connectors is not cheap.</li>
+          <li><strong>Scalability:</strong> not "can it handle petabytes" but "can it grow smoothly from where WE are" - and shrink in a quiet quarter without a contract fight.</li>
+          <li><strong>Total cost of ownership:</strong> license plus compute plus storage plus the people to run it plus the cost of leaving. The sticker price is the smallest of those numbers.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Cloud vs on-prem in 2026: a short conversation<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A decade ago this was a real debate. Today the default is cloud: elasticity, zero hardware, and pay-for-use fit warehouse workloads almost perfectly - warehouse demand is spiky (month-end, board week) and the cloud lets you pay for the spike only.</p>
+        <ul>
+          <li><strong>Default cloud:</strong> for most companies, most workloads. All five engines above are cloud-first or cloud-only.</li>
+          <li><strong>On-prem earns its place</strong> for data sovereignty and regulatory regimes that require data on national soil or your own metal - banking, defense, some healthcare and public sector.</li>
+          <li><strong>The honest middle:</strong> regulated firms often run hybrid - sensitive data on-prem or in-region, everything else in cloud. That is a design choice, not indecision.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The sovereignty question that saved a deal.</strong> A Singapore financial-services CDO was two weeks from signing a US-region warehouse contract when compliance asked one question: "where does the data physically sit?" The answer forced an in-region deployment - available, but priced and scoped differently. Asking in week one instead of week eleven would have cost nothing. Put "which region, and who can access it?" on your ten-question list. It is there.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why DuckDB and Postgres are on a buyer's table<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The free row is not a joke - it is a calibration. DuckDB is a real columnar engine (it powers the builder track of this course, live in a browser tab), brilliant for laptop-scale analysis. Postgres runs fine as a small warehouse until roughly 100 GB. If your data fits there, a five-figure platform contract is solving a problem you do not have yet - and knowing that changes your negotiating posture on day one.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: VENDOR QUESTIONS ============ -->
+  <section class="section" id="vendor">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the vendor-meeting script</span>
+      <h2>Ten questions, red flags, and the pilot <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">Vendors answer the questions you ask. These ten force the answers that decide the next three years of your data budget. Print them; the goal is not to be hostile, it is to be un-surprisable.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision ladder: shortlist two engines, pilot on your data, measure, negotiate exits, commit for a year">
+        <style>
+          .dlH { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .dlS { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .dlC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .dlN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .dlArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#dlAh); }
+        </style>
+        <defs>
+          <marker id="dlAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="dlN" x="30" y="34" fill="#1C2833">The buying ladder - each rung earns the next</text>
+        <rect x="30" y="190" width="150" height="44" rx="8" fill="#5E8CB0"/>
+        <text class="dlS" x="44" y="209">1 · Shortlist 2</text>
+        <text class="dlS" x="44" y="226">four criteria</text>
+        <rect x="205" y="150" width="150" height="44" rx="8" fill="#3E6B8F"/>
+        <text class="dlS" x="219" y="169">2 · Pilot 2-4 wks</text>
+        <text class="dlS" x="219" y="186">your real data</text>
+        <rect x="380" y="110" width="150" height="44" rx="8" fill="#3E6B8F"/>
+        <text class="dlS" x="394" y="129">3 · Measure</text>
+        <text class="dlS" x="394" y="146">cost·speed·fit</text>
+        <rect x="555" y="70" width="150" height="44" rx="8" fill="#26435C"/>
+        <text class="dlS" x="569" y="89">4 · Negotiate</text>
+        <text class="dlS" x="569" y="106">exit doors in</text>
+        <rect x="730" y="30" width="120" height="44" rx="8" fill="#F59E0B"/>
+        <text class="dlS" x="744" y="49" fill="#3D2800">5 · Commit</text>
+        <text class="dlS" x="744" y="66" fill="#3D2800">12 months</text>
+        <path class="dlArr" d="M180,206 C195,200 195,180 202,174"/>
+        <path class="dlArr" d="M355,166 C370,160 370,140 377,134"/>
+        <path class="dlArr" d="M530,126 C545,120 545,100 552,94"/>
+        <path class="dlArr" d="M705,86 C720,80 720,60 727,54"/>
+        <text class="dlC" x="30" y="264">Skip a rung and you buy the demo, not the product. Rung 3's "team fit" predicts TCO better than the price sheet.</text>
+        <text class="dlC" x="30" y="284">Rung 4 in writing: rollover on credits, egress terms, open formats where the platform allows.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - five rungs from vendor deck to signed contract, pilot in the middle</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The ten questions to ask any warehouse vendor<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ol>
+          <li><strong>Am I paying per scan, per compute-second, or per seat?</strong> The shape of the meter decides which of my team's habits get expensive.</li>
+          <li><strong>What does a paused warehouse cost me?</strong> Idle should be near zero. If it is not, ask why.</li>
+          <li><strong>What does it cost to get my data OUT?</strong> Egress fees are the quiet lock-in. Get the per-TB exit price in writing.</li>
+          <li><strong>Show me the bill for my workload, not your demo.</strong> Give them your real query volume and data size; make them price that.</li>
+          <li><strong>Which region does my data sit in, and who can access it?</strong> The sovereignty question, before compliance asks it for you.</li>
+          <li><strong>What happens when we 10x - and what happens when we shrink?</strong> Scaling up is the brochure; scaling down is the contract fine print.</li>
+          <li><strong>Do purchased credits or commitments expire?</strong> Expiring credits are a discount that becomes a donation.</li>
+          <li><strong>What in this proposal is proprietary format vs open format?</strong> Open formats (like Parquet) keep the exit door unlocked.</li>
+          <li><strong>What does support actually cost at the tier we would need?</strong> The listed price often assumes a support tier no serious company runs on.</li>
+          <li><strong>Which reference customer looks like us - and can I call them?</strong> Not their biggest logo. Their customer at your size, in your industry.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Red flags in the proposal<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Credits that expire:</strong> a large upfront credit purchase with a 12-month expiry is a bet against your own adoption speed - and the house wins.</li>
+          <li><strong>"Unlimited" with fine print:</strong> unlimited queries at a fixed price usually hides a throttle, a "fair use" clause, or a compute class too small to matter.</li>
+          <li><strong>Discounts that require 3-year commitment before a pilot:</strong> a price that is only good today is a pressure tactic, not a price.</li>
+          <li><strong>TCO comparisons the vendor made for you:</strong> always check whose assumptions fill the spreadsheet. Rebuild it with your numbers.</li>
+          <li><strong>No straight answer on egress:</strong> if the exit cost takes three follow-up emails, that is itself the answer.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The credits that vanished.</strong> A scale-up pre-bought a year of warehouse credits at a handsome discount. Migration slipped two quarters; 40% of the credits expired unused. The "discount" made the effective price higher than list. The fix in the renewal: smaller commitment, rollover clause, price locked for growth. The vendor agreed - because the buyer finally asked.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The pilot-before-commit playbook<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Never buy from the demo. The demo runs the vendor's data on the vendor's tuning. The pilot runs yours:</p>
+        <ul>
+          <li><strong>Shortlist two engines</strong> using the four criteria - not five engines, two. Real pilots are work; spread thin they prove nothing.</li>
+          <li><strong>Pilot 2-4 weeks with a real slice:</strong> one genuine subject area (Daybreak would pick orders + subscriptions), your five most-used dashboard queries, your actual BI tool on top.</li>
+          <li><strong>Measure three things:</strong> cost of the pilot workload extrapolated to a year, query speed on YOUR queries, and how much help your team needed - the team-fit number predicts TCO better than the price sheet.</li>
+          <li><strong>Negotiate with exit doors:</strong> shortest commitment that gets an acceptable price, rollover on any credits, egress terms in the contract, data in open formats where the platform allows.</li>
+          <li><strong>Then commit properly:</strong> once chosen, stop re-litigating for a year. Switching costs are real; serial pilots are their own waste.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Between sessions</span>
+      <h2>Take this back to your desk <span class="tag exercise">◐ 20 min</span></h2>
+    </div>
+    <ul>
+      <li>Find out what your company runs today - warehouse, lake, lakehouse, or "a big Postgres and hope". Ask your data lead which estate it is and whether they agree with the label.</li>
+      <li>Ask for last quarter's warehouse or analytics-platform bill. You are not auditing - you are calibrating. Session a5 teaches you how to read it.</li>
+      <li>Score your current platform against IBM's four criteria (features/usability, compatibility, scalability, TCO) from memory, then ask your data lead to score it too. Compare notes.</li>
+      <li>If a vendor conversation is live anywhere in your org, forward yourself the ten questions and check how many the current proposal already answers in writing.</li>
+      <li>Ask one deliberately naive question this week: "what would it cost us to leave our current platform?" The quality of the answer tells you a lot.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">The leader track distills the buyer-relevant half of the major warehousing curricula - concepts and selection judgment, without the hands-on labs. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals M1 - data lakes &amp; lakehouses</span><span class="note">Part 1 · the three estates, in buyer's terms</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals M1 - popular systems &amp; selecting a system</span><span class="note">Part 2 · engine landscape + the four selection criteria</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - cloud vs on-prem, DW vs lakehouse (S6/S7)</span><span class="note">Parts 1-2 · the 2026 default and its exceptions</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Engine pricing specifics (Snowflake credits, BigQuery scan pricing, etc.)</span><span class="note">Part 2 · shapes taught here; pricing moves fast - re-verify before purchase</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · A lakehouse is best described as...</p>
+      <button class="qopt" type="button">A · A bigger data lake with more storage</button>
+      <button class="qopt" type="button">B · Warehouse-style tables built directly on cheap lake files, so one system serves analysts and ML</button>
+      <button class="qopt" type="button">C · A warehouse hosted on-premises instead of in the cloud</button>
+      <p class="qwhy">The lakehouse merges the two estates: lake economics underneath, warehouse structure and governance on top. Powerful - and more moving parts than a first warehouse needs.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Your team lives in SELECT-heavy dashboards over one very wide table. Which pricing shape deserves the hardest look before you sign?</p>
+      <button class="qopt" type="button">A · Flat per-seat licensing</button>
+      <button class="qopt" type="button">B · Free open-source, since it has no meter</button>
+      <button class="qopt" type="button">C · Pay per TB scanned - careless wide scans on that table turn directly into invoice</button>
+      <p class="qwhy">Match the meter to your habits. Scan-priced engines are wonderful for disciplined queries and expensive for SELECT * cultures - a5 turns this into a full cost playbook.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · The vendor offers a deep discount on pre-paid credits that expire in 12 months. The buyer's move is...</p>
+      <button class="qopt" type="button">A · Treat expiry as a red flag: negotiate rollover, or size the commitment to what you will genuinely use</button>
+      <button class="qopt" type="button">B · Buy the maximum - a discount is a discount</button>
+      <button class="qopt" type="button">C · Refuse all commitments and stay on-demand forever</button>
+      <p class="qwhy">Expiring credits bet against your own adoption speed. Commitments are fine - sized honestly, with rollover, after a pilot on your real workload.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 4 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Warehouse</b><span>Structured, modeled, governed copy of your data. Answers business questions fast. Buy this first.</span></div>
+      <div class="cheat-item"><b>Lake</b><span>Cheap storage for raw files of any shape. Useful parking, not answers. Ungoverned, it becomes a swamp.</span></div>
+      <div class="cheat-item"><b>Lakehouse</b><span>Warehouse tables built on lake files (Parquet/Delta). One estate for analysts + ML - at real scale, with real engineers.</span></div>
+      <div class="cheat-item"><b>IBM's four criteria</b><span>Features/usability · compatibility · scalability · total cost of ownership. Your vendor scoring sheet.</span></div>
+      <div class="cheat-item"><b>Pricing shapes</b><span>Snowflake: compute credits. BigQuery: per TB scanned or slots. Redshift: cluster/serverless. Databricks: DBUs. Re-verify before buying.</span></div>
+      <div class="cheat-item"><b>Cloud vs on-prem 2026</b><span>Default cloud. On-prem for sovereignty and regulation. Hybrid is a design choice, not indecision.</span></div>
+      <div class="cheat-item"><b>Red flags</b><span>Expiring credits · "unlimited" with fine print · vendor-built TCO sheets · vague egress answers.</span></div>
+      <div class="cheat-item"><b>Pilot before commit</b><span>Two engines, 2-4 weeks, your data + your queries + your BI tool. Measure cost, speed, team fit. Then sign with exit doors.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 4 of 6 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a3-one-truth-problem.html">← Prev: The one-truth problem</a> &nbsp;·&nbsp; <a href="a5-cost-and-performance.html">Next: Cost and performance →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

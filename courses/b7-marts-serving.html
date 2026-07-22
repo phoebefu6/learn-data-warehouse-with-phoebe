@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 7 · Marts and serving - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Builder session 7 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Builder track · Session 7 of 10</div>
+    <h1><span class="accent">Marts</span> and serving</h1>
+    <p class="sub">Daybreak's warehouse loads nightly and keeps history honestly - and nobody outside the data team has touched it yet. Tonight the warehouse starts earning its keep: you carve team-shaped marts out of the core star, pre-aggregate the queries dashboards hammer all day, and learn the quiet contract that makes people trust a number they did not compute themselves.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · DE · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · Marts, rollups &amp; serving</span>
+      <span class="a3" style="flex:5">20-42 · Build-along: Daybreak's marts</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the build stands</h2>
+    </div>
+    <p class="lede">The stack under you tonight: typed <strong>staging</strong> (b2), the <strong>star</strong> - <code>fct_order_line</code> plus <code>dim_date</code>, <code>dim_customer</code>, <code>dim_product</code> (b3-b4), <strong>Type 2 history</strong> (b5), and <strong>idempotent MERGE loads</strong> keeping it fresh (b6). That is a complete warehouse core. What it is not, yet, is a product anyone consumes. Marts and serving turn the core into answers people actually open.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live warehouse - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      Two working marts (finance and marketing) with business policy baked in, the views vs materialized views vs tables freshness-cost-speed triangle, ROLLUP as the one-query cube, and the serving mindset: a mart is a promise, not a query.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: MARTS ============ -->
+  <section class="section" id="marts">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers IBM DW Fundamentals M1 data marts, DLAI C4 M4 views</span>
+      <h2>Marts: each team its own governed slice <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">Give every team raw access to the core star and each will re-invent the rules: finance excludes refunds AND cancellations, marketing excludes only cancellations, ops forgets both - and Monday's exec meeting has three different revenue numbers. A <strong>data mart</strong> is the fix: a slice of the core, shaped and filtered for one team, with the business rules written <em>once</em>, inside the definition.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 350" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One core star feeds three team marts, each serving different consumers with policy baked in">
+        <style>
+          .maH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .maT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .maS { font: 600 11px Inter, sans-serif; fill: #FFFFFF; }
+          .maC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .maN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .maArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#maAh); }
+        </style>
+        <defs>
+          <marker id="maAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <rect x="40" y="90" width="190" height="120" rx="10" fill="#26435C"/>
+        <text class="maT" x="58" y="118">Core star</text>
+        <text class="maS" x="58" y="140">fct_order_line</text>
+        <text class="maS" x="58" y="158">dim_date · dim_customer</text>
+        <text class="maS" x="58" y="176">dim_product · SCD history</text>
+        <text class="maS" x="58" y="196">one truth, all grain</text>
+
+        <path class="maArr" d="M230,110 C300,70 330,60 386,58"/>
+        <path class="maArr" d="M230,150 C300,150 330,150 386,150"/>
+        <path class="maArr" d="M230,190 C300,230 330,240 386,242"/>
+
+        <rect x="390" y="36" width="240" height="46" rx="8" fill="#3E6B8F"/>
+        <text class="maT" x="404" y="56">mart_finance_monthly</text>
+        <text class="maS" x="404" y="74">policy: completed orders only</text>
+        <rect x="390" y="128" width="240" height="46" rx="8" fill="#3E6B8F"/>
+        <text class="maT" x="404" y="148">mart_marketing_channel</text>
+        <text class="maS" x="404" y="166">policy: refund rate by channel</text>
+        <rect x="390" y="220" width="240" height="46" rx="8" fill="#3E6B8F"/>
+        <text class="maT" x="404" y="240">mart_top_products</text>
+        <text class="maS" x="404" y="258">policy: category rollup, no PII</text>
+
+        <path class="maArr" d="M630,58 C660,58 675,58 706,58"/>
+        <path class="maArr" d="M630,150 C660,150 675,150 706,150"/>
+        <path class="maArr" d="M630,242 C660,242 675,242 706,242"/>
+
+        <rect x="710" y="36" width="130" height="46" rx="8" fill="#5E8CB0"/>
+        <text class="maS" x="724" y="56">CFO dashboard</text>
+        <text class="maS" x="724" y="72">board pack</text>
+        <rect x="710" y="128" width="130" height="46" rx="8" fill="#5E8CB0"/>
+        <text class="maS" x="724" y="148">growth team</text>
+        <text class="maS" x="724" y="164">campaign reviews</text>
+        <rect x="710" y="220" width="130" height="46" rx="8" fill="#5E8CB0"/>
+        <text class="maS" x="724" y="240">merchandising</text>
+        <text class="maS" x="724" y="256">reorder planning</text>
+
+        <rect x="40" y="292" width="800" height="1" fill="#E3EAF0"/>
+        <rect x="40" y="312" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="maN" x="64" y="324">The refund rule lives in ONE place - the mart definition - not in forty analysts' heads.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one core, three team-shaped slices, three very different consumers</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>View, materialized view, or table? The triangle<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A mart is a definition; you still choose its physical form. Three options, trading <strong>freshness, cost, and speed</strong>:</p>
+        <ul>
+          <li><strong>View:</strong> a saved query, computed at read time. Always fresh, zero storage - and every open of the dashboard pays the full compute. Perfect at Daybreak's size; DuckDB gives you these natively.</li>
+          <li><strong>Materialized view:</strong> results stored, refreshed on a schedule. Reads are instant; the price is staleness between refreshes plus refresh compute. Cloud engines (Snowflake, BigQuery, Redshift) offer scheduled materialization; the concept is what transfers.</li>
+          <li><strong>Table:</strong> you materialize it yourself - a CTAS your b6 load rebuilds each night. Maximum control, and now freshness is your pipeline's problem.</li>
+        </ul>
+        <p>Rule of thumb: start as a view. Promote to materialized when a dashboard hits it hundreds of times a day and the compute bill (or latency) says so. You will feel this exact promotion pressure in b8.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Mart boundaries are political, not just technical<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A mart's WHERE clause is a policy decision someone must own. "Finance revenue excludes refunded and cancelled orders" sounds technical, but it decides whose Monday number looks better - so get the definition agreed <em>with the team that consumes it</em>, write it into the mart, and document it where the leader track's a3 audience can find it. The alternative - every analyst re-deriving the rule - is how a company ends up arguing about arithmetic in the boardroom.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: PRE-AGGREGATION ============ -->
+  <section class="section" id="rollups">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers IBM DW Fundamentals M2 cubes &amp; rollups</span>
+      <h2>Pre-aggregation: ROLLUP, the one-query cube <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">Old-school OLAP tools sold "cubes": every subtotal at every level, pre-computed. Modern SQL keeps the useful part in one clause. <code>GROUP BY ROLLUP (month, channel)</code> returns the detail rows, the per-month subtotals, <em>and</em> the grand total - one query, one scan.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ROLLUP output contains detail rows, subtotal rows with NULLs, and one grand total row">
+        <style>
+          .roH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .roT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .roR { font: 600 12px "SF Mono", Menlo, monospace; fill: #1C2833; }
+          .roW { font: 600 12px "SF Mono", Menlo, monospace; fill: #FFFFFF; }
+          .roC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .roN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+        </style>
+        <text class="roH" x="40" y="34">GROUP BY ROLLUP (month_name, channel) - one result, three altitudes</text>
+
+        <rect x="40" y="52" width="460" height="26" rx="6" fill="#26435C"/>
+        <text class="roT" x="52" y="70">month_name · channel · revenue</text>
+
+        <rect x="40" y="86" width="460" height="24" rx="4" fill="#EDF3F8"/>
+        <text class="roR" x="52" y="103">Jan · web · 152.00</text>
+        <rect x="40" y="114" width="460" height="24" rx="4" fill="#EDF3F8"/>
+        <text class="roR" x="52" y="131">Jan · app · 96.00</text>
+        <rect x="40" y="142" width="460" height="24" rx="4" fill="#5E8CB0"/>
+        <text class="roW" x="52" y="159">Jan · NULL · 248.00   (January subtotal)</text>
+        <rect x="40" y="170" width="460" height="24" rx="4" fill="#EDF3F8"/>
+        <text class="roR" x="52" y="187">Feb · web · 134.00</text>
+        <rect x="40" y="198" width="460" height="24" rx="4" fill="#EDF3F8"/>
+        <text class="roR" x="52" y="215">... every month, both altitudes ...</text>
+        <rect x="40" y="226" width="460" height="24" rx="4" fill="#F59E0B"/>
+        <text class="roR" x="52" y="243">NULL · NULL · 1685.00   (grand total)</text>
+
+        <text class="roH" x="540" y="70">How to read it</text>
+        <text class="roC" x="540" y="96">Detail rows: both columns filled -</text>
+        <text class="roC" x="540" y="114">the ordinary GROUP BY output.</text>
+        <text class="roC" x="540" y="140">Subtotal rows: channel is NULL -</text>
+        <text class="roC" x="540" y="158">meaning "all channels" for that month.</text>
+        <text class="roC" x="540" y="184">Grand total: every rolled column NULL -</text>
+        <text class="roC" x="540" y="202">the whole table in one row.</text>
+        <text class="roC" x="540" y="228">Illustrative numbers - run the real</text>
+        <text class="roC" x="540" y="246">query in the playground below.</text>
+
+        <rect x="40" y="272" width="800" height="1" fill="#E3EAF0"/>
+        <rect x="40" y="292" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="roN" x="64" y="304">In a ROLLUP result, NULL means "all" - the column was rolled up, not missing.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - detail, subtotals, and grand total from a single scan</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Run the cube: revenue by month and channel<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Spot the three altitudes in the live result: rows with both columns filled (detail), rows where channel is NULL (month subtotal), and the one row where both are NULL (grand total - which lands first, since we sort by revenue).</p>
+        <div class="sqlbox" data-caption="The one-query cube. ORDER BY revenue DESC floats the grand total to the top - NULL here means 'all'." data-setup="star">
+          <pre class="sql-src">SELECT d.month_name, f.channel,
+       ROUND(SUM(f.line_revenue), 2) AS revenue
+FROM fct_order_line f
+JOIN dim_date d ON f.date_key = d.date_key
+WHERE f.status = 'completed'
+GROUP BY ROLLUP (d.month_name, f.channel)
+ORDER BY revenue DESC
+LIMIT 12;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>When to pre-aggregate at all<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Pre-aggregation is a cache, and every cache is a freshness debt. The test is arithmetic: a KPI tile hit 1,000 times a day over the same day-old numbers should read from a materialized rollup - computing it 1,000 times is pure waste. An analyst's one-off exploration should hit the star directly - fresh, flexible, and the scan cost is paid once. Daybreak's 53 fact rows make everything instant; the <em>decision pattern</em> is what you are rehearsing, and b8 attaches real costs to it.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: SERVING ============ -->
+  <section class="section" id="serving">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers DLAI C4 M4 serving</span>
+      <h2>Serving surfaces: a mart is a promise <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">"Serving" is everything downstream of the mart: BI dashboards reading it live, scheduled extracts mailed to the ops team, reverse ETL pushing segments back into the CRM, feature tables feeding ML models. Four consumers, one dependency in common - they all break if the mart changes shape under them.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The semantic contract<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The moment one consumer you do not control reads your mart, its definition stops being your private query and becomes an interface. Treat it like one:</p>
+        <ul>
+          <li><strong>Columns stay.</strong> Renaming <code>revenue</code> to <code>net_revenue</code> is a breaking change; every downstream dashboard and sync dies quietly. Add columns freely; remove or rename only with a migration.</li>
+          <li><strong>Definitions are documented.</strong> "revenue = completed order lines only, refunds excluded" lives next to the mart, in words a CFO can read. This is the exact artifact the leader track's a3 session teaches executives to demand.</li>
+          <li><strong>Grain is stated.</strong> "One row per month" or "one row per channel" - say it, so nobody double-counts by joining two marts of different grain.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The renamed column that killed a quarter of dashboards.</strong> A data team "cleaned up" a mart's column names on a Friday. By Monday, 40 dashboards showed blanks, the CRM sync had silently skipped three days, and trust in the platform took a quarter to rebuild. The fix cost one hour; the lesson - marts are contracts - cost a reorg.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The four serving surfaces, one line each<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>BI dashboards:</strong> the default. Point the tool at the mart, never at raw staging - the mart is where policy lives.</li>
+          <li><strong>Scheduled extracts:</strong> CSVs on a schedule are unglamorous and everywhere. Same rule: export the mart, not raw tables.</li>
+          <li><strong>Reverse ETL:</strong> warehouse-computed answers (segments, LTV, churn risk) pushed back into operational tools like the CRM. The warehouse graduates from reporting to running the business.</li>
+          <li><strong>ML features:</strong> models train on mart-grade tables too - and gain the same reproducibility from stated grain and stable columns.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Build the finance and marketing marts <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Two marts, two teams, two policies - each written exactly once. Finance counts only completed orders. Marketing keeps refunds visible, because refund rate by channel is <em>their</em> KPI. Same core star underneath both.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Policy first:</strong> the finance mart's WHERE clause IS the policy - <code>status = 'completed'</code>. Refunded and cancelled orders never reach the CFO's numbers, by definition, not by analyst discipline.</p></div>
+      <div class="step"><p><strong>Grain second:</strong> one row per month. dim_date supplies year, month, and month_name so the mart sorts and labels itself.</p></div>
+      <div class="step"><p>Run box 1, then box 2. Marketing's mart makes the opposite policy call: refunds stay in, surfaced as a rate per channel - one team's noise is another team's KPI.</p></div>
+      <div class="step"><p>Both are views: zero storage, always fresh, recomputed per read. Say when you would promote each to a materialized table (b8 makes you pay for the answer).</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="The finance mart. The WHERE clause is the policy, written once for every consumer downstream." data-setup="star">
+      <pre class="sql-src">CREATE VIEW mart_finance_monthly AS
+SELECT d.year, d.month, d.month_name,
+       count(DISTINCT f.order_id) AS orders,
+       ROUND(SUM(f.line_revenue), 2) AS revenue
+FROM fct_order_line f
+JOIN dim_date d ON f.date_key = d.date_key
+WHERE f.status = 'completed'
+GROUP BY d.year, d.month, d.month_name;
+
+SELECT * FROM mart_finance_monthly
+ORDER BY year, month;</pre>
+    </div>
+
+    <div class="sqlbox" data-caption="The marketing mart: refunds kept IN, as a rate. Different team, different policy, same star." data-setup="star">
+      <pre class="sql-src">CREATE VIEW mart_marketing_channel AS
+SELECT channel,
+       count(DISTINCT order_id) AS orders,
+       ROUND(SUM(CASE WHEN status = 'completed'
+                      THEN line_revenue ELSE 0 END), 2) AS completed_revenue,
+       ROUND(100.0 * count(DISTINCT CASE WHEN status = 'refunded'
+                                         THEN order_id END)
+             / count(DISTINCT order_id), 1) AS refund_order_pct
+FROM fct_order_line
+GROUP BY channel;
+
+SELECT * FROM mart_marketing_channel
+ORDER BY completed_revenue DESC;</pre>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: two marts and a boundary call <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Same rules as always: write it, run it, read the error, fix it. Each box carries a working answer - try blind first.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · The subscriptions mart: active vs cancelled, per plan<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The retention team wants one row per plan: how many subscriptions ever started, how many are still active, how many cancelled. Hint: <code>cancel_date IS NULL</code> means still active.</p>
+        <div class="sqlbox" data-caption="One worked answer. The policy baked in: 'active' is defined here as cancel_date IS NULL, once, for everyone." data-setup="star">
+          <pre class="sql-src">CREATE VIEW mart_subscriptions_by_plan AS
+SELECT c.plan,
+       count(*) AS subscriptions,
+       SUM(CASE WHEN s.cancel_date IS NULL THEN 1 ELSE 0 END) AS active,
+       SUM(CASE WHEN s.cancel_date IS NOT NULL THEN 1 ELSE 0 END) AS cancelled
+FROM stg_subscriptions s
+JOIN dim_customer c ON s.customer_id = c.customer_id
+GROUP BY c.plan;
+
+SELECT * FROM mart_subscriptions_by_plan
+ORDER BY subscriptions DESC;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · The top-products mart, with category rollup<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Merchandising wants product revenue with category subtotals and a grand total - Part 2's ROLLUP, now wearing a mart's name. Completed orders only (merchandising follows finance's policy here).</p>
+        <div class="sqlbox" data-caption="ROLLUP inside a view: detail + category subtotals + grand total, served under one stable name." data-setup="star">
+          <pre class="sql-src">CREATE VIEW mart_top_products AS
+SELECT p.category, p.name AS product,
+       ROUND(SUM(f.line_revenue), 2) AS revenue
+FROM fct_order_line f
+JOIN dim_product p ON f.product_key = p.product_key
+WHERE f.status = 'completed'
+GROUP BY ROLLUP (p.category, p.name);
+
+SELECT category, product, revenue
+FROM mart_top_products
+ORDER BY revenue DESC
+LIMIT 10;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · Which column would you NEVER put in a wide-access mart?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Look back at <code>dim_customer</code>: customer_key, customer_id, name, city, country, plan, signup_date. The marketing mart is readable by half the company. Which columns stay out?</p>
+        <ul>
+          <li><strong>name</strong> - direct PII. A channel-performance mart has zero analytical need for it, so exposure is pure risk. Aggregate marts should carry counts of people, never people.</li>
+          <li><strong>city</strong> - quasi-identifier. Alone it seems harmless; joined with plan and signup week it can single someone out in a small market. Keep country, drop city, unless the mart's purpose demands it and access is restricted.</li>
+          <li>The principle: <strong>marts minimize, by design.</strong> Every column in a mart is a disclosure decision - the leader track's governance session (a3) gives your executives the same rule from their side.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Build <code>mart_weekend_vs_weekday</code>: completed revenue split by dim_date's <code>is_weekend</code> flag, one row each. State the grain in a comment on line 1.</li>
+      <li>Break a contract on purpose: recreate <code>mart_finance_monthly</code> with <code>revenue</code> renamed to <code>net_rev</code>, then re-run Demo 1's SELECT unchanged and watch it fail. That error message is what 40 dashboards feel like.</li>
+      <li>Write the one-paragraph semantic contract for the finance mart: grain, policy, column meanings. Show it to a non-data colleague - if they cannot restate the refund rule, rewrite it.</li>
+      <li>List the marts your company has (or should have) for its top three teams, and for each: view, materialized view, or nightly table? Justify with the freshness-cost-speed triangle.</li>
+      <li>Bring your slowest dashboard query to b8 - performance and cost tuning is next, and marts are where the bills show up.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This track teaches the working core of the major data-warehousing curricula, run on a live engine instead of slides. Certificates, graded labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - M1: data marts</span><span class="note">Part 1 + Demo 1 · marts as governed team slices, built live</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - M2: cubes, rollups, materialized views</span><span class="note">Parts 1-2 · ROLLUP as the SQL cube; the matview triangle</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DeepLearning.AI Data Engineering C4 (Joe Reis) - M4: serving &amp; views</span><span class="note">Part 3 · serving surfaces and the semantic contract</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - S6: warehouse to business value</span><span class="note">Whole session · the warehouse finally meets its consumers</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">1 · A view differs from a materialized view how?</p>
+      <button class="qopt" type="button">A · A view recomputes its query at every read (always fresh, pays compute each time); a materialized view stores results and refreshes on a schedule (fast reads, stale between refreshes)</button>
+      <button class="qopt" type="button">B · A view is read-only; a materialized view accepts INSERTs</button>
+      <button class="qopt" type="button">C · They are identical; "materialized" is marketing</button>
+      <p class="qwhy">The triangle: freshness, cost, speed - pick two. Views maximize freshness, materialized views maximize read speed, and the refresh schedule is where the staleness hides.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why do marts encode business policy (like "finance excludes refunds") in their definition?</p>
+      <button class="qopt" type="button">A · WHERE clauses run faster inside views</button>
+      <button class="qopt" type="button">B · To hide data from the finance team</button>
+      <button class="qopt" type="button">C · So the rule is written once and every consumer inherits it - instead of forty analysts each re-deriving it slightly differently</button>
+      <p class="qwhy">Three teams re-implementing one revenue rule produces three Monday numbers. Baking the rule into the mart makes the policy a fact of the data, not a habit of the people.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">3 · GROUP BY ROLLUP (month, channel) returns...</p>
+      <button class="qopt" type="button">A · Only the per-month-per-channel detail rows</button>
+      <button class="qopt" type="button">B · Detail rows, plus per-month subtotal rows (channel NULL), plus one grand-total row (both NULL)</button>
+      <button class="qopt" type="button">C · One row per channel, months averaged away</button>
+      <p class="qwhy">ROLLUP adds the subtotal altitudes to the ordinary GROUP BY output, in one scan. NULL in a rolled-up column reads as "all" - the SQL residue of the old OLAP cube.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 7 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Data mart</b><span>A team-shaped slice of the core star with business policy written once, inside the definition. Consumers read marts, never raw staging.</span></div>
+      <div class="cheat-item"><b>Policy in one place</b><span>The mart's WHERE clause is the business rule. Finance excludes refunds by definition, not by analyst discipline.</span></div>
+      <div class="cheat-item"><b>View</b><span>Saved query, computed per read. Always fresh, zero storage, pays compute every open. The right default.</span></div>
+      <div class="cheat-item"><b>Materialized view / table</b><span>Stored results, refreshed on schedule or by your b6 load. Instant reads, staleness debt. Promote when hit rates demand it.</span></div>
+      <div class="cheat-item"><b>ROLLUP</b><span>GROUP BY ROLLUP (a, b) = detail + subtotals + grand total in one scan. NULL in a rolled column means "all".</span></div>
+      <div class="cheat-item"><b>Pre-aggregate when</b><span>The same aggregate is read hundreds of times a day. One-off exploration hits the star directly instead.</span></div>
+      <div class="cheat-item"><b>Semantic contract</b><span>A mart is a promise: columns stay, grain is stated, definitions documented in business words. Breaking it breaks dashboards silently.</span></div>
+      <div class="cheat-item"><b>Marts minimize</b><span>Every column is a disclosure decision. Names and fine-grained locations stay out of wide-access marts.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 7 of 10 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b6-loading-patterns.html">← Prev: Loading patterns</a> &nbsp;·&nbsp; <a href="b8-performance-cost.html">Next: Performance and cost →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/dw-seed.js?v=1"></script>
+<script src="../assets/warehouse-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

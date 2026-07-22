@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 1 · Row store meets column store - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Builder session 1 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Builder track · Session 1 of 10</div>
+    <h1>Row store meets <span class="accent">column store</span></h1>
+    <p class="sub">Daybreak - the coffee-subscription brand from the SQL course - grew up. Its app database now groans every time someone opens a dashboard. Over ten sessions you will build Daybreak's first real data warehouse, and every page runs DuckDB: an actual columnar OLAP engine, live in your browser. Tonight you learn WHY warehouses exist - by feeling the difference, not reading about it.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · DE · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">Start here</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · OLTP vs OLAP &amp; columnar</span>
+      <span class="a3" style="flex:5">18-42 · Build-along: feel the difference</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>How this track works</h2>
+    </div>
+    <p class="lede">Ten sessions, one running project: Daybreak's six OLTP tables (customers, products, orders, order items, subscriptions, events) play the <strong>source system</strong>, raw and messy - dates stored as text and all. Session by session you will stage it (b2), reshape it into a star schema (b3-b4), track history with slowly changing dimensions (b5), load it properly (b6), serve it to the business (b7), make it fast and cheap (b8), meet the lakehouse (b9), and assemble the whole warehouse end to end (b10). If you took <a href="https://phoebefu6.github.io/learn-sql-with-phoebe/">learn-sql-with-phoebe</a>, this is the same database - now you build what b10 only hinted at.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live warehouse - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The one distinction the whole field rests on (OLTP vs OLAP), a gut feel for why column storage crushes analytics workloads, and a browser tab running a real warehouse engine against 300,000 rows - no install, no cloud account, no bill.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: TWO WORKLOADS ============ -->
+  <section class="section" id="two-workloads">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers IBM DW Fundamentals M1, 365DS "Foundations"</span>
+      <h2>OLTP vs OLAP: two jobs, two shapes <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">Daybreak's app database answers thousands of tiny questions a day: "insert this order", "update this address", "show Ava her subscription". Each touches <strong>one row</strong>. The founder's questions are the opposite shape: "revenue by month by channel, all time" touches <strong>every row but only three columns</strong>. One database serving both is the design mistake warehouses exist to fix.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OLTP handles many tiny row-level writes; OLAP handles few huge column-level reads">
+        <style>
+          .wlT { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .wlH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .wlC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .wlB { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .wlN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .wlArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#wlAh); }
+        </style>
+        <defs>
+          <marker id="wlAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="wlH" x="40" y="36">OLTP · the app database</text>
+        <rect x="40" y="50" width="360" height="24" rx="6" fill="#26435C"/>
+        <text class="wlT" x="52" y="67">many tiny transactions, all day</text>
+        <rect x="40" y="86" width="110" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="wlB" x="52" y="106">insert order</text>
+        <rect x="162" y="86" width="120" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="wlB" x="174" y="106">update address</text>
+        <rect x="294" y="86" width="106" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="wlB" x="306" y="106">fetch 1 row</text>
+        <text class="wlC" x="40" y="140">touches: ONE row at a time · needs: speed + safety per write</text>
+        <text class="wlC" x="40" y="158">shape: narrow and deep - the whole row, right now</text>
+
+        <text class="wlH" x="480" y="36">OLAP · the warehouse</text>
+        <rect x="480" y="50" width="360" height="24" rx="6" fill="#26435C"/>
+        <text class="wlT" x="492" y="67">few huge questions, whole history</text>
+        <rect x="480" y="86" width="170" height="30" rx="6" fill="#5E8CB0"/>
+        <text class="wlB" x="492" y="106">revenue by month</text>
+        <rect x="662" y="86" width="178" height="30" rx="6" fill="#5E8CB0"/>
+        <text class="wlB" x="674" y="106">churn by cohort</text>
+        <text class="wlC" x="480" y="140">touches: EVERY row, few columns · needs: scan speed</text>
+        <text class="wlC" x="480" y="158">shape: wide and shallow - three columns, all of history</text>
+
+        <path class="wlArr" d="M400,100 C430,100 450,100 478,100"/>
+        <text class="wlC" x="404" y="90">copy</text>
+
+        <rect x="40" y="200" width="800" height="1" fill="#E3EAF0"/>
+        <text class="wlH" x="40" y="236">Run analytics on the app database and both sides lose:</text>
+        <text class="wlC" x="40" y="260">· the founder's big scan locks tables the checkout flow needs - carts hang</text>
+        <text class="wlC" x="40" y="280">· the app's row-by-row layout makes the big scan painfully slow anyway</text>
+        <rect x="40" y="300" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="wlN" x="64" y="312">A warehouse is a COPY of your data, restructured for the second shape of question.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - two workloads that want opposite database designs</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The day Daybreak's dashboard froze the checkout<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Every data team has this origin story. Daybreak's version: marketing opened a "lifetime revenue by cohort" dashboard at 9am on launch day. The query scanned every order ever placed - on the same database processing live checkouts. Carts spun. Support lit up. Engineering's fix was not "optimize the query"; it was <strong>"get analytics off the app database"</strong>. That sentence is the birth certificate of every data warehouse.</p>
+        <ul>
+          <li><strong>OLTP</strong> (online transaction processing): the app's workload. Many small reads/writes, one row at a time, correctness per transaction is sacred.</li>
+          <li><strong>OLAP</strong> (online analytical processing): the analyst's workload. Few queries, each scanning millions of rows but touching few columns.</li>
+          <li><strong>The fix is a copy:</strong> extract data out of the app database, restructure it for scans, and point every dashboard at the copy. The copy is the warehouse.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Why "just add an index" fails.</strong> Indexes accelerate finding <em>few</em> rows. Analytics reads <em>all</em> rows. There is no index for "scan everything and add it up" - the table's physical layout itself has to change. That layout change is Part 2.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where the copy lives: warehouse, mart, lake<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three cousins you will hear named together (IBM's course opens with them; a4 in the leader track compares them for executives):</p>
+        <ul>
+          <li><strong>Data warehouse:</strong> the structured, modeled copy - cleaned, typed, shaped for analytics. This course.</li>
+          <li><strong>Data mart:</strong> a slice of the warehouse for one team (finance mart, marketing mart). Session b7 builds them.</li>
+          <li><strong>Data lake:</strong> cheap storage for raw files of any shape - and the <strong>lakehouse</strong> puts warehouse-style tables directly on lake files. Session b9 is that story, and you will query real Parquet files when you get there.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: COLUMNAR ============ -->
+  <section class="section" id="columnar">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers 365DS "Modern architectures", Snowflake micro-partition ideas land in b8</span>
+      <h2>Why column storage wins analytics <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">The single deepest idea in warehousing: change how bytes sit on disk. A <strong>row store</strong> keeps each record's fields together - perfect for "fetch order 1017, all of it". A <strong>column store</strong> keeps each column's values together - perfect for "sum line_amount across every order ever". Same data, opposite physical layouts, and the layout decides which questions are fast.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 350" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Row store lays records side by side; column store lays each column's values together">
+        <style>
+          .csH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .csC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .csB { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #FFFFFF; }
+          .csI { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #1C2833; }
+          .csN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+        </style>
+        <text class="csH" x="40" y="36">Row store: records live together</text>
+        <rect x="40" y="52" width="86" height="28" rx="4" fill="#26435C"/><text class="csB" x="50" y="70">id 1001</text>
+        <rect x="128" y="52" width="86" height="28" rx="4" fill="#3E6B8F"/><text class="csB" x="138" y="70">Jan 06</text>
+        <rect x="216" y="52" width="86" height="28" rx="4" fill="#5E8CB0"/><text class="csB" x="226" y="70">41.00</text>
+        <rect x="304" y="52" width="86" height="28" rx="4" fill="#26435C"/><text class="csB" x="314" y="70">id 1002</text>
+        <rect x="392" y="52" width="86" height="28" rx="4" fill="#3E6B8F"/><text class="csB" x="402" y="70">Jan 11</text>
+        <rect x="480" y="52" width="86" height="28" rx="4" fill="#5E8CB0"/><text class="csB" x="490" y="70">18.00</text>
+        <rect x="568" y="52" width="86" height="28" rx="4" fill="#26435C"/><text class="csB" x="578" y="70">id 1003</text>
+        <rect x="656" y="52" width="86" height="28" rx="4" fill="#3E6B8F"/><text class="csB" x="666" y="70">Jan 14</text>
+        <rect x="744" y="52" width="86" height="28" rx="4" fill="#5E8CB0"/><text class="csB" x="754" y="70">50.00</text>
+        <text class="csC" x="40" y="106">"SUM(amount)" must read EVERY block - ids and dates come along for the ride, wasted.</text>
+
+        <text class="csH" x="40" y="150">Column store: columns live together</text>
+        <rect x="40" y="166" width="86" height="28" rx="4" fill="#26435C"/><text class="csB" x="50" y="184">id 1001</text>
+        <rect x="128" y="166" width="86" height="28" rx="4" fill="#26435C"/><text class="csB" x="138" y="184">id 1002</text>
+        <rect x="216" y="166" width="86" height="28" rx="4" fill="#26435C"/><text class="csB" x="226" y="184">id 1003</text>
+        <rect x="326" y="166" width="86" height="28" rx="4" fill="#3E6B8F"/><text class="csB" x="336" y="184">Jan 06</text>
+        <rect x="414" y="166" width="86" height="28" rx="4" fill="#3E6B8F"/><text class="csB" x="424" y="184">Jan 11</text>
+        <rect x="502" y="166" width="86" height="28" rx="4" fill="#3E6B8F"/><text class="csB" x="512" y="184">Jan 14</text>
+        <rect x="612" y="166" width="86" height="28" rx="4" fill="#F59E0B"/><text class="csI" x="622" y="184">41.00</text>
+        <rect x="700" y="166" width="86" height="28" rx="4" fill="#F59E0B"/><text class="csI" x="710" y="184">18.00</text>
+        <rect x="788" y="166" width="52" height="28" rx="4" fill="#F59E0B"/><text class="csI" x="794" y="184">...</text>
+        <text class="csC" x="40" y="220">"SUM(amount)" reads ONLY the amber blocks. Two-thirds of the disk never gets touched.</text>
+
+        <rect x="40" y="244" width="800" height="1" fill="#E3EAF0"/>
+        <text class="csC" x="40" y="272">Bonus 1 · compression: a column of similar values (all dates, all prices) squeezes far smaller than mixed rows.</text>
+        <text class="csC" x="40" y="292">Bonus 2 · vectorized execution: the engine crunches one column in CPU-friendly batches, not row by row.</text>
+        <rect x="40" y="316" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="csN" x="64" y="328">Snowflake, BigQuery, Redshift, DuckDB - every modern warehouse engine is columnar. This is the reason.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - same three orders, two physical layouts, opposite strengths</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Meet DuckDB - the warehouse in your browser<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>DuckDB is a real columnar OLAP engine - the same breed as Snowflake or BigQuery, minus the cloud. It compiles to WebAssembly, which is why every editor on these pages runs an honest-to-goodness warehouse engine inside your browser tab. First Run downloads the engine once (~8 MB, then cached); after that everything is local and instant.</p>
+        <ul>
+          <li><strong>The SQL you know transfers:</strong> SELECT, JOIN, GROUP BY, window functions - all identical to what you learned in the SQL course.</li>
+          <li><strong>What is new here:</strong> columnar layout, CREATE TABLE AS pipelines, MERGE, Parquet - warehouse muscles SQLite never had.</li>
+          <li><strong>Honest note:</strong> the first Run on each page needs network for the one-time engine download. Everything after runs offline.</li>
+        </ul>
+        <div class="sqlbox" data-caption="Your first warehouse query - the raw Daybreak source, straight from the app database.">
+          <pre class="sql-src">SELECT count(*) AS orders,
+       min(order_date) AS first_order,
+       max(order_date) AS last_order
+FROM orders;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Spot the mess: why this source needs a warehouse<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Look closely at what the app database actually hands us. Run this and check the <code>typeof</code> column:</p>
+        <div class="sqlbox" data-caption="typeof() reveals the storage type. VARCHAR dates = maths and month-grouping misery.">
+          <pre class="sql-src">SELECT order_id, order_date,
+       typeof(order_date) AS stored_as
+FROM orders
+LIMIT 4;</pre>
+        </div>
+        <p>Dates stored as text. Revenue split across two tables. Statuses like <code>refunded</code> mixed into every count. This is normal, healthy OLTP design - and exactly what analytics cannot live with. Session b2 builds the staging layer that fixes it; tonight we just feel the pain.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: THE ROAD AHEAD ============ -->
+  <section class="section" id="road-ahead">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · your ten-session build</span>
+      <h2>The warehouse you are about to build <span class="tag concept">3 min live</span></h2>
+    </div>
+    <p class="lede">Here is the whole track on one strip. Every session adds one layer to Daybreak's warehouse, and each layer exists to answer a business question the raw source fumbles.</p>
+
+    <table class="clean">
+      <thead><tr><th>Session</th><th>You build</th><th>Daybreak gets</th></tr></thead>
+      <tbody>
+        <tr><td><strong>b2</strong></td><td>staging layer</td><td>typed, trusted copies of the source</td></tr>
+        <tr><td><strong>b3-b4</strong></td><td>star schema: facts + dimensions</td><td>questions answered in one obvious join</td></tr>
+        <tr><td><strong>b5</strong></td><td>slowly changing dimensions</td><td>history that does not rewrite itself</td></tr>
+        <tr><td><strong>b6</strong></td><td>loading patterns: incremental + MERGE</td><td>tonight's orders in tomorrow's warehouse, safely</td></tr>
+        <tr><td><strong>b7</strong></td><td>marts, views, rollups</td><td>each team its own clean slice</td></tr>
+        <tr><td><strong>b8</strong></td><td>performance + cost tuning</td><td>fast dashboards, small bills</td></tr>
+        <tr><td><strong>b9</strong></td><td>lakehouse: Parquet + external tables</td><td>one foot in the modern open stack</td></tr>
+        <tr><td><strong>b10</strong></td><td>capstone: the whole pipeline</td><td>source to staging to star to served answer</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Feel columnar speed on 300,000 rows <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Thirty-three orders prove nothing. So this playground generates <strong>300,000 synthetic order lines</strong> (table <code>big_orders</code>) before your query runs - then lets a columnar engine loose on them. Watch the millisecond counter under each result.</p>
+
+    <div class="steps">
+      <div class="step"><p>Run the aggregate below as-is. Note the time: a full scan of 300k rows, grouped and summed, in your browser tab.</p></div>
+      <div class="step"><p>Add <code>status</code> to the GROUP BY (both lines). Still instant - one more column read, the rest untouched.</p></div>
+      <div class="step"><p>Now try <code>SELECT * FROM big_orders LIMIT 5;</code> - fetching whole rows is the one thing this layout does NOT love. On 300k rows it survives; on 300 billion you would pay for it.</p></div>
+      <div class="step"><p>Say the lesson out loud: <strong>warehouses scan columns, not rows.</strong> Ask for the columns you need, never <code>SELECT *</code>.</p></div>
+    </div>
+
+    <div class="sqlbox" data-setup="big" data-caption="300k rows are generated fresh before your script runs - nothing shipped over the network.">
+      <pre class="sql-src">SELECT channel,
+       count(*) AS orders,
+       ROUND(SUM(quantity * unit_price), 0) AS revenue
+FROM big_orders
+GROUP BY channel
+ORDER BY revenue DESC;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>The bill version of this lesson.</strong> Cloud warehouses charge by data scanned. <code>SELECT *</code> on a wide table reads every column and bills you for all of them; naming three columns reads three. Analysts who learned on row stores drag the <code>*</code> habit into BigQuery and the invoice notices before they do. Session b8 turns this into a cost playbook.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: three founder questions <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Same rules as the SQL course: write it, run it, read the error, fix it, run again. All three run against the fresh 300k-row <code>big_orders</code> table.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Monthly revenue: which month was biggest?<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="big" data-caption="Hint: strftime(order_date, '%Y-%m') gives a month bucket to GROUP BY.">
+          <pre class="sql-src">SELECT strftime(order_date, '%Y-%m') AS month,
+       ROUND(SUM(quantity * unit_price), 0) AS revenue
+FROM big_orders
+GROUP BY month
+ORDER BY month;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · What share of orders get refunded, by channel?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="big" data-caption="Hint: AVG of a CASE WHEN ... THEN 1.0 ELSE 0 END is a rate. Or count both ways.">
+          <pre class="sql-src">SELECT channel,
+       count(*) AS orders,
+       ROUND(AVG(CASE WHEN status = 'refunded' THEN 1.0 ELSE 0 END) * 100, 2) AS refund_pct
+FROM big_orders
+GROUP BY channel;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · Weekend vs weekday: when do people order?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A taste of what <code>dim_date</code> will make trivial in b4 - for now, derive it by hand:</p>
+        <div class="sqlbox" data-setup="big" data-caption="dayofweek() returns 0=Sunday..6=Saturday in DuckDB.">
+          <pre class="sql-src">SELECT CASE WHEN dayofweek(order_date) IN (0, 6)
+            THEN 'weekend' ELSE 'weekday' END AS day_type,
+       count(*) AS orders
+FROM big_orders
+GROUP BY day_type;</pre>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Bookmark this page - the editors are your permanent warehouse scratchpad, 300k rows on demand.</li>
+      <li>Write one OLTP-shaped question and one OLAP-shaped question about any system you use at work. Check: does the first touch one row, and the second touch one column?</li>
+      <li>On <code>big_orders</code>, find the single biggest revenue day. (GROUP BY <code>order_date</code>, order, limit.)</li>
+      <li>Explain to a colleague in two sentences why the company dashboard should not query the production app database. If they push back, you have Part 1's diagram.</li>
+      <li>Bring your slowest known dashboard or query to b2 - the staging layer is where its fix begins.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This track teaches the working core of the major data-warehousing curricula, run on a live engine instead of slides. Certificates, graded labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - Module 1: warehouses, marts, lakes</span><span class="note">Part 1 + self-study card · systems tour continues in a4/b9</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - Foundations &amp; core components</span><span class="note">Parts 1-3 · OLTP/OLAP split and why the copy exists</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DeepLearning.AI Data Engineering C4 (Joe Reis) - serving framing</span><span class="note">Part 1 · "analytics is a serving problem"; modeling depth lands in b3-b5</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">365DS - Performance optimization in querying</span><span class="note">Demo 1 · columnar scan intuition; the full tuning kit is b8</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · Marketing's dashboard keeps timing out and checkout slows to a crawl whenever it loads. The textbook fix is...</p>
+      <button class="qopt" type="button">A · Add more indexes to the app database</button>
+      <button class="qopt" type="button">B · Cache the dashboard and hope</button>
+      <button class="qopt" type="button">C · Copy the data into a separate store built for scans - a warehouse</button>
+      <p class="qwhy">Indexes speed up finding few rows; analytics reads all rows. The workloads want opposite designs, so you separate them - the warehouse is that copy.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · Why does a column store make SUM(line_amount) over 300k rows so fast?</p>
+      <button class="qopt" type="button">A · It reads only the line_amount column's blocks - every other column stays untouched on disk</button>
+      <button class="qopt" type="button">B · It secretly pre-computes every possible sum</button>
+      <button class="qopt" type="button">C · It skips rows to approximate the answer</button>
+      <p class="qwhy">Columnar layout stores each column's values together, so an aggregate touches only the columns it names - plus similar values compress better and crunch in batches.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">3 · Which question is OLAP-shaped?</p>
+      <button class="qopt" type="button">A · "Show customer 14's current subscription"</button>
+      <button class="qopt" type="button">B · "Average order value by month for the last two years"</button>
+      <button class="qopt" type="button">C · "Update Ava Chen's shipping address"</button>
+      <p class="qwhy">OLAP questions scan many rows but few columns (all history, two fields). One-row lookups and writes are OLTP - the app database's home turf.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 1 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>OLTP</b><span>App workload: many tiny transactions, one row each, correctness per write. Keep it away from dashboards.</span></div>
+      <div class="cheat-item"><b>OLAP</b><span>Analytics workload: few queries, all rows, few columns. What warehouses are built for.</span></div>
+      <div class="cheat-item"><b>A warehouse is</b><span>a restructured COPY of source data, optimized for scans - not a faster app database.</span></div>
+      <div class="cheat-item"><b>Columnar storage</b><span>Each column's values stored together: aggregates read only named columns, compress better, vectorize.</span></div>
+      <div class="cheat-item"><b>Never SELECT *</b><span>In a warehouse you pay (time and money) per column scanned. Name what you need.</span></div>
+      <div class="cheat-item"><b>DuckDB</b><span>Real columnar OLAP engine running in your browser here. Same SQL you already know.</span></div>
+      <div class="cheat-item"><b>The source is messy</b><span>Text dates, split revenue, mixed statuses - healthy OLTP, useless analytics. b2 fixes it.</span></div>
+      <div class="cheat-item"><b>Running project</b><span>Daybreak's warehouse, built layer by layer through b10. Next: the staging layer.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 1 of 10 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="b2-architecture-staging.html">Next: Architecture and the staging layer →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/dw-seed.js?v=1"></script>
+<script src="../assets/warehouse-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

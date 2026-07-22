@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 4 · Building dimensions - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Builder session 4 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Builder track · Session 4 of 10</div>
+    <h1>Building <span class="accent">dimensions</span></h1>
+    <p class="sub">The star stands, but its arms were built in a hurry. Tonight you build dimensions the way a career warehouse engineer does: surrogate keys defended from first principles (not cargo-culted), a proper date dimension generated from a calendar series, and the conformed-dimension discipline that keeps every dashboard in the company agreeing with every other. Small tables, huge leverage - dimensions are where warehouse craft lives.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · DE · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-18 · Keys &amp; the date dimension</span>
+      <span class="a3" style="flex:5">18-42 · Build-along: dimensions</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the build stands</h2>
+    </div>
+    <p class="lede">Daybreak now has staging (b2) and a first star (b3): fct_order_line ringed by dim_customer, dim_product, and a dim_date you used before meeting. Tonight the dimensions get their full treatment - because in practice, fact tables are almost boring (declare grain, load measures, done) while <strong>dimensions carry the judgment calls</strong>: what key, what calendar, what gets shared across the whole company. Get these right and b5's history-tracking and b7's second fact table land softly.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live warehouse - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The three-count case for surrogate keys (they change, they collide, history needs room), a dim_date you generated yourself with generate_series and will reuse in every warehouse you ever build, and the conformed-dimension idea - the single discipline that makes company dashboards agree.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: SURROGATE KEYS ============ -->
+  <section class="section" id="surrogate-keys">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers IBM M2 dimension design, DLAI C4 M1 keys</span>
+      <h2>Surrogate keys: the case, properly made <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">In b3 you stamped every dimension row with <code>row_number()</code> and took it on faith. Here is the argument. A <strong>natural key</strong> (customer_id, email, SKU) belongs to the source system - it lives by the source's rules. A <strong>surrogate key</strong> is a meaningless integer the warehouse itself assigns, and owning your keys buys you three escapes.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Natural keys change and collide across sources; surrogate keys are warehouse-owned and make room for history">
+        <style>
+          .skH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .skT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .skB { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #FFFFFF; }
+          .skD { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #1C2833; }
+          .skC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .skN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .skArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#skAh); }
+        </style>
+        <defs>
+          <marker id="skAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="skH" x="30" y="34">Natural-key world · keys belong to sources</text>
+        <rect x="30" y="48" width="190" height="26" rx="6" fill="#26435C"/>
+        <text class="skB" x="42" y="66">app: customer_id 7</text>
+        <rect x="30" y="80" width="190" height="26" rx="6" fill="#26435C"/>
+        <text class="skB" x="42" y="98">shop: customer_id 7</text>
+        <path class="skArr" d="M220,61 C250,61 260,74 288,80"/>
+        <path class="skArr" d="M220,93 C250,93 260,86 288,84"/>
+        <rect x="290" y="68" width="110" height="28" rx="6" fill="#3E6B8F"/>
+        <text class="skB" x="302" y="87">collision!</text>
+        <text class="skC" x="30" y="130">Same "7", two different people - the join</text>
+        <text class="skC" x="30" y="148">happily merges them into one phantom.</text>
+        <text class="skC" x="30" y="176">And when the app migrates and renumbers</text>
+        <text class="skC" x="30" y="194">its IDs, every old fact row points nowhere.</text>
+        <text class="skC" x="30" y="222">One key value can also only ever mean ONE</text>
+        <text class="skC" x="30" y="240">row - no room for "Ava before the move"</text>
+        <text class="skC" x="30" y="258">and "Ava after the move" side by side.</text>
+
+        <rect x="450" y="24" width="1" height="256" fill="#E3EAF0"/>
+
+        <text class="skH" x="480" y="34">Surrogate-key world · warehouse owns the keys</text>
+        <rect x="480" y="48" width="370" height="26" rx="6" fill="#5E8CB0"/>
+        <text class="skB" x="492" y="66">key 3 · app 7 · Ava Chen · Seattle</text>
+        <rect x="480" y="80" width="370" height="26" rx="6" fill="#5E8CB0"/>
+        <text class="skB" x="492" y="98">key 9 · shop 7 · Ben Ito · Osaka</text>
+        <rect x="480" y="112" width="370" height="26" rx="6" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="skD" x="492" y="130">key 16 · app 7 · Ava Chen · Denver (b5)</text>
+        <text class="skC" x="480" y="162">The dimension keeps BOTH source IDs as plain</text>
+        <text class="skC" x="480" y="180">attributes - collisions become two honest rows.</text>
+        <text class="skC" x="480" y="208">Sources can renumber freely: only the staging</text>
+        <text class="skC" x="480" y="226">lookup changes, the fact table never moves.</text>
+        <text class="skC" x="480" y="254">And row 16 is the preview: TWO versions of Ava</text>
+        <text class="skC" x="480" y="272">can coexist - exactly what b5's history needs.</text>
+
+        <rect x="30" y="292" width="820" height="1" fill="#E3EAF0"/>
+        <rect x="30" y="308" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="skN" x="54" y="320">Three escapes: keys that change, keys that collide, history that needs room. That is the whole case.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - natural keys obey the source's rules; surrogate keys obey yours</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The row_number() pattern and its production cousins<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>This track mints keys with <code>row_number() OVER (ORDER BY natural_key)</code> - perfect for a full rebuild, because the whole dimension is created in one statement and numbering is deterministic. Production warehouses that load incrementally use the same idea with different machinery:</p>
+        <ul>
+          <li><strong>Sequences / IDENTITY columns:</strong> the database hands out the next integer as each new row arrives - the incremental-load version of row_number(). DuckDB has CREATE SEQUENCE; Snowflake and friends have AUTOINCREMENT.</li>
+          <li><strong>Hash keys:</strong> some teams hash the natural key instead, so the key is computable without a lookup. Trade-offs galore; know the pattern exists.</li>
+          <li><strong>The invariant that matters:</strong> whatever mints it, the surrogate key is <em>meaningless</em>. Nobody parses it, nobody predicts it, nothing breaks when the business changes.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Keep the natural key on the row.</strong> The surrogate key is for joins; the natural key (customer_id) stays on the dimension as a regular column - it is how staging finds the right dimension row during loads (b6), and how humans trace a row back to the source.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>When natural keys are fine, honestly<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Craft means knowing the exceptions. dim_date's key is the date itself - natural, and correct, because a calendar date never changes meaning, never collides, and needs no versions. A tiny static lookup (country codes) can also skip the ceremony. The rule of thumb: surrogate keys for dimensions that <em>describe things that change</em> (customers, products, employees); natural keys where the domain itself is immutable. Decide per dimension, out loud.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: DIM_DATE ============ -->
+  <section class="section" id="dim-date">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers IBM M2 dimension build lab, DLAI C4 M1</span>
+      <h2>dim_date: the dimension every warehouse shares <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Every warehouse on earth has a date dimension, and they all look alike: one row per calendar day, with the calendar's facts precomputed - year, month, weekday, weekend flag, fiscal periods later. You do not load it from a source; you <strong>generate</strong> it, one row per day, straight from a series.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Generate the calendar with generate_series<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><code>generate_series(start, end, INTERVAL 1 DAY)</code> emits every date in the range; the SELECT around it decorates each day with attributes. This is the exact table the star setup has been handing you:</p>
+        <div class="sqlbox" data-setup="staging" data-caption="One row per day, 2025-11-01 to 2026-06-30 - extend the range and it just grows.">
+          <pre class="sql-src">CREATE TABLE dim_date AS
+SELECT CAST(gs AS DATE)               AS date_key,
+       EXTRACT(year FROM gs)          AS year,
+       EXTRACT(month FROM gs)         AS month,
+       strftime(gs, '%b')             AS month_name,
+       EXTRACT(dow FROM gs)           AS day_of_week,
+       EXTRACT(dow FROM gs) IN (0, 6) AS is_weekend
+FROM generate_series(DATE '2025-11-01', DATE '2026-06-30',
+                     INTERVAL 1 DAY) t(gs);
+
+SELECT * FROM dim_date
+WHERE is_weekend
+LIMIT 6;</pre>
+        </div>
+        <p>What belongs on it: anything the business says about a day. Year, quarter, month, weekday, weekend - tonight. Fiscal periods, holidays, promo windows - the moment the business defines them, they get a column here and <em>only</em> here.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why not just date functions everywhere?<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>You could write <code>strftime(order_date, '%b')</code> in every query forever. Three reasons the join beats the function:</p>
+        <ul>
+          <li><strong>Consistency:</strong> one analyst's month starts Monday, another's week is ISO, a third forgets the year boundary. A shared dim_date means one definition, everywhere, forever.</li>
+          <li><strong>Business logic lives once:</strong> "fiscal year starts in February" is a column update on one table - not a hunt through 200 dashboard queries.</li>
+          <li><strong>Joins beat functions for pruning:</strong> engines can skip whole chunks of a fact table when you filter on a joined date attribute - but a function wrapped around a column often defeats that skipping. b8 measures this for real.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: CONFORMED DIMS ============ -->
+  <section class="section" id="conformed">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers DLAI Kimball bus, 365DS design</span>
+      <h2>Conformed dimensions: why dashboards agree <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Daybreak has one fact table tonight. By b7 it will have two (orders, subscriptions), and someday a third (support events). The Kimball promise from b3 - stars that agree - is kept by one discipline: <strong>every fact joins the SAME dimension tables</strong>. One dim_customer, shared. That shared dimension is called <em>conformed</em>, and it is the bus the whole warehouse rides.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One conformed dim_customer is shared by the orders fact, the subscriptions fact and a future support fact, so all dashboards agree">
+        <style>
+          .cfH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .cfT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .cfB { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #FFFFFF; }
+          .cfC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .cfN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .cfArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#cfAh); }
+        </style>
+        <defs>
+          <marker id="cfAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="cfH" x="330" y="34">ONE dim_customer · conformed</text>
+        <rect x="330" y="46" width="220" height="30" rx="6" fill="#26435C"/>
+        <text class="cfT" x="342" y="66">customer_key · city · plan</text>
+        <rect x="330" y="82" width="220" height="24" rx="5" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="cfC" x="342" y="98">one definition of "customer"</text>
+
+        <path class="cfArr" d="M370,110 C300,140 220,160 160,180"/>
+        <path class="cfArr" d="M440,110 C440,140 440,160 440,178"/>
+        <path class="cfArr" d="M510,110 C580,140 660,160 720,180"/>
+
+        <rect x="40" y="182" width="220" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="cfB" x="52" y="202">fct_order_line · b3</text>
+        <rect x="40" y="218" width="220" height="24" rx="5" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="cfC" x="52" y="234">revenue by city, plan ...</text>
+
+        <rect x="330" y="182" width="220" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="cfB" x="342" y="202">fct_subscription · b7</text>
+        <rect x="330" y="218" width="220" height="24" rx="5" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="cfC" x="342" y="234">churn by city, plan ...</text>
+
+        <rect x="620" y="182" width="220" height="30" rx="6" fill="#5E8CB0"/>
+        <text class="cfB" x="632" y="202">fct_support · someday</text>
+        <rect x="620" y="218" width="220" height="24" rx="5" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="cfC" x="632" y="234">tickets by city, plan ...</text>
+
+        <rect x="40" y="266" width="820" height="1" fill="#E3EAF0"/>
+        <text class="cfC" x="40" y="292">"Seattle" means the same customers in every chart, because every fact joined the same arm.</text>
+        <rect x="40" y="308" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="cfN" x="64" y="320">Two teams with two private customer tables = two revenue numbers in the same board meeting.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one shared dimension, many facts: the reason company dashboards can agree</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>What conformance costs, and who pays it<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Conformed dimensions are free tonight (one team, one browser tab). At company scale they cost governance: someone must own dim_customer, arbitrate what "active customer" means, and stop the marketing team from quietly forking their own copy with a friendlier definition. That ownership conversation is the leader track's a3 - this session is its boardroom twin made concrete in SQL.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The fork always starts innocently.</strong> A team copies dim_customer to add one column, the copy drifts, and eight months later two VPs present different customer counts. The cure is boring and works: additions go into the ONE shared dimension, reviewed, or they do not ship.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Build dim_date + dim_customer, then the payoff query <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">One script, three moves: generate the calendar, mint the customer dimension, then answer a question that is miserable without them - <strong>weekend vs weekday revenue, by plan</strong>. Starts from b2's staging layer (<code>data-setup="staging"</code>).</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Move 1 - dim_date:</strong> generate_series plus decorations. Read each attribute line: this is the calendar's knowledge, computed once.</p></div>
+      <div class="step"><p><strong>Move 2 - dim_customer:</strong> the b3 pattern - row_number() surrogate key, natural key kept aboard as a column.</p></div>
+      <div class="step"><p><strong>Move 3 - the payoff:</strong> the final query never calls a date function - it just joins the calendar and reads is_weekend like any other column.</p></div>
+      <div class="step"><p><strong>Bend it:</strong> group by day_of_week instead of the weekend flag, or by city instead of plan. Each variant is a one-line change - that ease is the whole point of dimensions.</p></div>
+    </div>
+
+    <div class="sqlbox" data-setup="staging" data-caption="Weekend vs weekday by plan - no strftime in the final query, the calendar did the thinking.">
+      <pre class="sql-src">CREATE TABLE dim_date AS
+SELECT CAST(gs AS DATE)               AS date_key,
+       EXTRACT(year FROM gs)          AS year,
+       EXTRACT(month FROM gs)         AS month,
+       strftime(gs, '%b')             AS month_name,
+       EXTRACT(dow FROM gs)           AS day_of_week,
+       EXTRACT(dow FROM gs) IN (0, 6) AS is_weekend
+FROM generate_series(DATE '2025-11-01', DATE '2026-06-30',
+                     INTERVAL 1 DAY) t(gs);
+
+CREATE TABLE dim_customer AS
+SELECT row_number() OVER (ORDER BY customer_id) AS customer_key,
+       customer_id, name, city, country, plan, signup_date
+FROM stg_customers;
+
+SELECT c.plan,
+       CASE WHEN d.is_weekend THEN 'weekend'
+            ELSE 'weekday' END AS day_type,
+       ROUND(SUM(oi.line_amount), 2) AS revenue
+FROM stg_orders o
+JOIN stg_order_items oi USING (order_id)
+JOIN dim_date d     ON o.order_date  = d.date_key
+JOIN dim_customer c ON o.customer_id = c.customer_id
+WHERE o.status = 'completed'
+GROUP BY c.plan, day_type
+ORDER BY c.plan, day_type;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This dim_date outlives the project.</strong> Warehouse engineers carry their date-dimension script from job to job like a chef's knife. Extend the range to ten years, add fiscal columns when finance defines them, and never write it from scratch again.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: extend the dimensions <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Q1 grows the calendar, Q2 grows the product dimension, Q3 is the conformed-dimension thought exercise - no SQL, just the scar tissue of everyone who skipped it.</p>
+
+    <div class="steps">
+      <div class="step"><p>Q1 and Q2 are live - attempt each before reading the starter SQL. Both start from staging, so each script builds its own dimension.</p></div>
+      <div class="step"><p>Q3 is prose: read the scenario, answer out loud, then open the card for the debrief.</p></div>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Add a quarter column to dim_date<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Finance thinks in quarters, so the calendar should too. Derive it from the month with a CASE (strftime has no quarter code, and writing the logic yourself means you can move the fiscal year-end later):</p>
+        <div class="sqlbox" data-setup="staging" data-caption="The summary groups by your new column - 4 quarters, each knowing its own date range.">
+          <pre class="sql-src">CREATE TABLE dim_date AS
+SELECT CAST(gs AS DATE)               AS date_key,
+       EXTRACT(year FROM gs)          AS year,
+       EXTRACT(month FROM gs)         AS month,
+       strftime(gs, '%b')             AS month_name,
+       CASE WHEN EXTRACT(month FROM gs) &lt;= 3 THEN 'Q1'
+            WHEN EXTRACT(month FROM gs) &lt;= 6 THEN 'Q2'
+            WHEN EXTRACT(month FROM gs) &lt;= 9 THEN 'Q3'
+            ELSE 'Q4' END             AS quarter,
+       EXTRACT(dow FROM gs) IN (0, 6) AS is_weekend
+FROM generate_series(DATE '2025-11-01', DATE '2026-06-30',
+                     INTERVAL 1 DAY) t(gs);
+
+SELECT quarter, count(*) AS days,
+       min(date_key) AS first_day,
+       max(date_key) AS last_day
+FROM dim_date
+GROUP BY quarter
+ORDER BY first_day;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · Build dim_product with a price_band attribute<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Dimensions earn their keep by carrying <em>derived</em> attributes the business thinks in. Nobody asks "revenue where price is 16.00" - they ask "how do budget items do vs premium". Band the price once, here:</p>
+        <div class="sqlbox" data-setup="staging" data-caption="Change the band edges to match how YOUR business talks - that conversation is modeling.">
+          <pre class="sql-src">CREATE TABLE dim_product AS
+SELECT row_number() OVER (ORDER BY product_id) AS product_key,
+       product_id, name, category, price, roast,
+       CASE WHEN price &lt; 15 THEN 'under 15'
+            WHEN price &lt; 25 THEN '15 to 24'
+            ELSE '25 and up' END AS price_band
+FROM stg_products;
+
+SELECT price_band, count(*) AS products,
+       ROUND(AVG(price), 2) AS avg_price
+FROM dim_product
+GROUP BY price_band
+ORDER BY avg_price;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · Two sources both say "customer_id 7". Now what?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>The scenario:</strong> Daybreak acquires a wholesale arm with its own ordering system. Its database also numbers customers from 1 - so both sources contain a customer_id 7, and they are different people. Marketing wants one warehouse, one dim_customer, one set of dashboards. What breaks if you join on customer_id, and what does the conformed dimension have to do instead?</p>
+        <p><strong>The debrief:</strong> joining on the natural key silently merges the two number-sevens into one phantom customer - their orders sum together, their cities fight, and no error is ever thrown. The conformed dim_customer fixes it structurally: each person gets their own surrogate key, and the dimension carries <em>two</em> lineage columns (source_system, source_customer_id) instead of pretending one ID rules both worlds. Staging maps each source's IDs to the shared dimension during loads (the b6 lookup step). This is Part 1's collision escape and Part 3's conformance discipline meeting in one table - and it is why acquisitions are where warehouse teams earn their salary.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Add is_month_start and is_month_end flags to dim_date. Hint: EXTRACT(day FROM ...) is 1 on the first; compare against the month's max for the last.</li>
+      <li>Rebuild the weekend-by-plan query from Demo 1, slicing by your Q2 price_band instead of plan. Two of tonight's dimensions in one query.</li>
+      <li>Write the surrogate-key case from memory - the three escapes - as three bullet points. Then check them against Part 1's diagram.</li>
+      <li>Find the "customer" definition at your company: how many tables claim to be it? If more than one, you have found an unconformed dimension in the wild.</li>
+      <li>Rest up: b5 uses tonight's surrogate keys to do the trick they were built for - keeping history when a customer changes city or plan.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the dimension-building material from the major curricula as one live build. Certificates, graded labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - Module 2: dimension design &amp; build labs</span><span class="note">Parts 1-2 + Demo 1 · surrogate keys and the date dimension, built live</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DeepLearning.AI Data Engineering C4 - Module 1: keys, date dimension, Kimball bus</span><span class="note">Parts 1 + 3 · the conformed-dimension discipline behind agreeing stars</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">365DS Intro to Data Warehousing - schema design</span><span class="note">Parts 2-3 · advanced schema variants (snowflake, galaxy) land in b9</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · The case for surrogate keys over natural keys, in one breath:</p>
+      <button class="qopt" type="button">A · Integers compress better in a columnar engine, so scans get cheaper</button>
+      <button class="qopt" type="button">B · Natural keys can change and can collide across sources, and one natural key can never hold two versions of the same customer - warehouse-owned keys escape all three</button>
+      <button class="qopt" type="button">C · SQL standards require every dimension to have a generated key</button>
+      <p class="qwhy">The three escapes: keys that change (source migrations), keys that collide (two sources both counting from 1), and history that needs room (b5 stores multiple versions of one customer - impossible if the natural key is the only identity).</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · What belongs in dim_date?</p>
+      <button class="qopt" type="button">A · Anything the business says about a day - year, month, weekend flag, fiscal periods, holidays - computed once and joined everywhere</button>
+      <button class="qopt" type="button">B · Only the date itself; attributes should be computed by strftime in each query</button>
+      <button class="qopt" type="button">C · Order revenue per day, so dashboards can skip the fact table</button>
+      <p class="qwhy">The calendar's knowledge lives on the calendar - once, consistently, prunably. Revenue is a measure and stays on the fact; per-query date functions are exactly what dim_date exists to retire.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">3 · The payoff of a CONFORMED dim_customer, once Daybreak has orders, subscriptions, and support facts:</p>
+      <button class="qopt" type="button">A · Loads get faster because there are fewer tables overall</button>
+      <button class="qopt" type="button">B · Each team can tune its own private copy of the customer table</button>
+      <button class="qopt" type="button">C · Every fact joins the same customer rows, so "revenue by city" and "churn by city" slice identical customers - dashboards agree by construction</button>
+      <p class="qwhy">Conformance means one shared definition of each noun. Private copies are the anti-pattern: they drift, and eight months later two executives present two different customer counts.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 4 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Surrogate key</b><span>Meaningless warehouse-owned integer per dimension row. Three escapes: source keys change, collide, and cannot hold versions.</span></div>
+      <div class="cheat-item"><b>Natural key</b><span>The source's ID (customer_id). Keep it ON the dimension as a column - loads and humans trace by it.</span></div>
+      <div class="cheat-item"><b>Minting pattern</b><span>row_number() OVER (ORDER BY natural_key) for full rebuilds; sequences / IDENTITY for incremental loads (b6).</span></div>
+      <div class="cheat-item"><b>dim_date</b><span>Generated, not loaded: generate_series(start, end, INTERVAL 1 DAY) + decorations. One row per day.</span></div>
+      <div class="cheat-item"><b>Calendar logic lives once</b><span>Weekend flags, quarters, fiscal periods: columns on dim_date, never per-query functions. Joins also prune better (b8).</span></div>
+      <div class="cheat-item"><b>Conformed dimension</b><span>ONE dim_customer joined by every fact. Dashboards agree by construction; forks drift into boardroom fights.</span></div>
+      <div class="cheat-item"><b>Derived attributes</b><span>price_band, day_type: encode how the business talks, once, on the dimension - not in 200 dashboards.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b5: slowly changing dimensions - the surrogate keys earn their keep when Ava moves to Denver.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 4 of 10 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b3-facts-dimensions.html">← Prev: Facts and dimensions</a> &nbsp;·&nbsp; <a href="b5-scd-in-practice.html">Next: SCD in practice →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/dw-seed.js?v=1"></script>
+<script src="../assets/warehouse-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

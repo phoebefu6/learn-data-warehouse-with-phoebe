@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 5 · Cost and performance - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Leader session 5 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Leader track · Session 5 of 6</div>
+    <h1>Cost and <span class="accent">performance</span></h1>
+    <p class="sub">The warehouse bill is the most negotiable line in your data budget - and the least understood. Most of it is compute, most of the compute is scans, and a surprising share of the scans serve nobody. This session teaches you to read the bill, name the four levers that shrink it, and run the ten-minute monthly conversation that keeps it shrunk. Daybreak's founder just opened her first real invoice; let's read it with her.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-20 · Why bills explode</span>
+      <span class="a3" style="flex:5">20-42 · The four levers + monthly questions</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>How this session works</h2>
+    </div>
+    <p class="lede">In a4 you learned the pricing shapes: per TB scanned, per compute-second, per credit. Today we follow the money after the contract is signed. No tuning syntax - the builder track's session b8 is the hands-on twin of this page. Your job is different: understand the physics well enough that "the warehouse bill doubled" becomes a conversation you can lead, with questions that have right answers.</p>
+    <div class="legend">
+      <span class="pill solid">Live - discussed in session</span>
+      <span class="pill light">Self-study - read after</span>
+      <span class="pill inkpill">For decision-makers</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The anatomy of a warehouse bill (storage is the sliver, compute is the bulk, waste hides inside the compute), the four levers every engine offers in some form, and five monthly questions for your data lead - with a feel for what good answers sound like.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: WHY BILLS EXPLODE ============ -->
+  <section class="section" id="bills">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers 365DS partitioning/indexing/query performance (exec level) · b8 is the hands-on twin</span>
+      <h2>Why warehouse bills explode <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">Cloud warehouses charge for work: per TB scanned (BigQuery's shape) or per second of compute (Snowflake's shape). That is fair - and it means every wasteful query is a small invoice. Bills do not explode because storage got expensive. They explode because <strong>compute quietly serves habits instead of decisions</strong>: whole-table scans for three columns, dashboards refreshing for empty rooms, one runaway join.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Anatomy of a warehouse bill: storage is a sliver, compute is the bulk, and a wide waste band hides inside compute">
+        <style>
+          .baH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .baB { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .baW { font: 700 13px Inter, sans-serif; fill: #3D2800; }
+          .baC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .baN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+        </style>
+        <text class="baH" x="40" y="36">Anatomy of one month's warehouse bill</text>
+        <rect x="40" y="56" width="90" height="56" rx="6" fill="#A5C2D8"/>
+        <text class="baB" x="52" y="88" fill="#1C2833">storage</text>
+        <rect x="134" y="56" width="366" height="56" rx="6" fill="#3E6B8F"/>
+        <text class="baB" x="150" y="82">compute doing useful work</text>
+        <text class="baB" x="150" y="100">decisions, reports, models</text>
+        <rect x="504" y="56" width="336" height="56" rx="6" fill="#F59E0B"/>
+        <text class="baW" x="520" y="82">compute doing waste</text>
+        <text class="baW" x="520" y="100">scans nobody needed</text>
+        <text class="baC" x="40" y="136">storage: pennies per GB - almost never the problem</text>
+        <text class="baC" x="440" y="136">compute: the bulk - and the amber band is the target</text>
+
+        <rect x="40" y="158" width="800" height="1" fill="#E3EAF0"/>
+        <text class="baH" x="40" y="190">What lives in the amber band</text>
+        <rect x="40" y="206" width="250" height="66" rx="8" fill="#26435C"/>
+        <text class="baB" x="54" y="230">SELECT * on wide tables</text>
+        <text class="baC" x="54" y="250" fill="#A5C2D8">60 columns read, 3 used -</text>
+        <text class="baC" x="54" y="266" fill="#A5C2D8">billed for all 60</text>
+        <rect x="315" y="206" width="250" height="66" rx="8" fill="#26435C"/>
+        <text class="baB" x="329" y="230">Dashboards on auto-refresh</text>
+        <text class="baC" x="329" y="250" fill="#A5C2D8">every 5 min, all night,</text>
+        <text class="baC" x="329" y="266" fill="#A5C2D8">for a room with nobody in it</text>
+        <rect x="590" y="206" width="250" height="66" rx="8" fill="#26435C"/>
+        <text class="baB" x="604" y="230">The intern's cross join</text>
+        <text class="baC" x="604" y="250" fill="#A5C2D8">one missing join condition:</text>
+        <text class="baC" x="604" y="266" fill="#A5C2D8">billions of rows by accident</text>
+
+        <rect x="40" y="300" width="800" height="1" fill="#E3EAF0"/>
+        <rect x="40" y="324" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="baN" x="64" y="336">The bill is a behavior report. Shrink the amber band and performance improves for free -</text>
+        <text class="baN" x="64" y="356">the same waste that costs money is what makes dashboards slow.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - storage is the sliver, compute is the bulk, waste hides in amber</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The meter runs on scans, not on answers<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The mental model that unlocks everything: a warehouse charges you for the data it <strong>touches</strong>, not the rows it returns. A query that returns one number can scan two terabytes to compute it. That is why identical-looking dashboards can differ 100x in cost - the difference is invisible on the screen and enormous on the meter.</p>
+        <ul>
+          <li><strong>Per-scan engines (BigQuery shape):</strong> the invoice literally lists bytes scanned. SELECT * on a 60-column table bills all 60 columns even if the chart uses 3.</li>
+          <li><strong>Per-compute engines (Snowflake shape):</strong> you pay for the seconds a warehouse runs. Wasteful scans keep it running longer - same waste, different meter.</li>
+          <li><strong>Why nobody notices:</strong> each incident is small. Fifty small habits, compounding daily across every dashboard, are how a bill doubles in two quarters with no single culprit.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The dashboard that cost more than the analyst.</strong> A CFO asked why the analytics bill had tripled. The audit found one executive dashboard set to refresh every five minutes, around the clock, scanning the full order history each time. It was viewed roughly twice a day. The refresh interval was changed to hourly during business hours - a one-line setting - and the bill dropped by a third. Nobody had done anything wrong; nobody had ever looked.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why "add an index" is not the answer here<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>If you learned databases in the app world, your instinct says "slow query, add an index". Warehouses mostly do not work that way. Indexes accelerate finding a few rows; analytics scans millions. Columnar engines got rid of classic indexes and replaced them with a different toolkit - reading fewer columns, skipping irrelevant slices of data, remembering answers. That toolkit is Part 2, and it is the vocabulary your data lead already uses: pruning, partitioning, clustering, materialized views, caching.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>A leader's glossary for the invoice<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Five words that appear on real warehouse invoices, translated once so the bill stops being a foreign document:</p>
+        <ul>
+          <li><strong>Bytes scanned / TB processed:</strong> how much data your queries touched. The core meter on scan-priced engines - this is the number the four levers shrink.</li>
+          <li><strong>Compute hours / credits / DBUs:</strong> how long engines ran, in the vendor's local currency. Same physics, different unit: waste keeps the clock running.</li>
+          <li><strong>Slots / warehouse size:</strong> how much horsepower was reserved. Reserved and unused still bills - that is lever 4's territory.</li>
+          <li><strong>Storage (active vs long-term):</strong> what sits on disk. Cheap per GB, but old copies and abandoned tables add up quietly - and clutter has a governance cost beyond the invoice.</li>
+          <li><strong>Egress / data transfer:</strong> data leaving the platform or crossing regions. Small on most months, decisive when you migrate - which is why a4 put it in the contract questions.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: FOUR LEVERS ============ -->
+  <section class="section" id="levers">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers 365DS partitioning &amp; performance, IBM M2 materialized-view ideas · b7/b8 build them</span>
+      <h2>The four levers, in exec terms <span class="tag concept">9 min live</span></h2>
+    </div>
+    <p class="lede">Every warehouse engine - Snowflake, BigQuery, Redshift, Databricks, even DuckDB - offers the same four levers under different brand names. You do not pull them yourself. You fund them, ask about them, and recognize when one is being ignored.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four cost levers: ask for less, skip most of the data, compute once read many, warehouses that sleep">
+        <style>
+          .flH { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .flT { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .flB { font: 400 12px Inter, sans-serif; fill: #FFFFFF; }
+          .flC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .flP { font: 700 12px Inter, sans-serif; fill: #3D2800; }
+          .flN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+        </style>
+        <text class="flT" x="40" y="36">Four levers, one bill</text>
+        <rect x="40" y="56" width="190" height="150" rx="10" fill="#26435C"/>
+        <text class="flH" x="56" y="84">1 · Columnar +</text>
+        <text class="flH" x="56" y="102">column pruning</text>
+        <text class="flB" x="56" y="130">name 3 columns,</text>
+        <text class="flB" x="56" y="148">read 3 columns -</text>
+        <text class="flB" x="56" y="166">never SELECT *</text>
+        <rect x="56" y="178" width="158" height="20" rx="4" fill="#F59E0B"/>
+        <text class="flP" x="66" y="192">ask for less</text>
+
+        <rect x="243" y="56" width="190" height="150" rx="10" fill="#3E6B8F"/>
+        <text class="flH" x="259" y="84">2 · Partitioning +</text>
+        <text class="flH" x="259" y="102">clustering</text>
+        <text class="flB" x="259" y="130">slice tables by date</text>
+        <text class="flB" x="259" y="148">so "last 30 days"</text>
+        <text class="flB" x="259" y="166">skips the other years</text>
+        <rect x="259" y="178" width="158" height="20" rx="4" fill="#F59E0B"/>
+        <text class="flP" x="269" y="192">skip most of the data</text>
+
+        <rect x="446" y="56" width="190" height="150" rx="10" fill="#3E6B8F"/>
+        <text class="flH" x="462" y="84">3 · Materialized</text>
+        <text class="flH" x="462" y="102">views + caching</text>
+        <text class="flB" x="462" y="130">pre-compute the</text>
+        <text class="flB" x="462" y="148">daily rollup once,</text>
+        <text class="flB" x="462" y="166">serve it 500 times</text>
+        <rect x="462" y="178" width="158" height="20" rx="4" fill="#F59E0B"/>
+        <text class="flP" x="472" y="192">compute once, reuse</text>
+
+        <rect x="649" y="56" width="190" height="150" rx="10" fill="#26435C"/>
+        <text class="flH" x="665" y="84">4 · Right-size</text>
+        <text class="flH" x="665" y="102">compute</text>
+        <text class="flB" x="665" y="130">auto-suspend when</text>
+        <text class="flB" x="665" y="148">idle, size to the job,</text>
+        <text class="flB" x="665" y="166">not to the peak</text>
+        <rect x="665" y="178" width="158" height="20" rx="4" fill="#F59E0B"/>
+        <text class="flP" x="675" y="192">warehouses that sleep</text>
+
+        <rect x="40" y="232" width="800" height="1" fill="#E3EAF0"/>
+        <text class="flC" x="40" y="260">Levers 1-2 shrink what each query reads. Lever 3 stops re-answering the same question. Lever 4 stops paying for silence.</text>
+        <text class="flC" x="40" y="280">Brand names differ - micropartitions, slots, clustering keys - but every engine sells these same four moves.</text>
+        <rect x="40" y="304" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="flN" x="64" y="316">Order matters: teams reach for lever 4 (bigger or smaller machines) first. The cheap wins</text>
+        <text class="flN" x="64" y="336">are usually levers 1-3 - they need attention, not budget.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - four levers with their plain-words payoffs</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>What each lever sounds like in a status update<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>You will never pull these levers, but you will hear them. Translation table:</p>
+        <ul>
+          <li><strong>"We cleaned up the worst queries"</strong> = lever 1. Analysts named columns instead of SELECT *, trimmed wide joins. Cost: a few days of attention. Often the single biggest win.</li>
+          <li><strong>"We partitioned the big tables by date"</strong> = lever 2. The 30-day dashboard now reads 30 days, not five years. One-time engineering work that pays rent forever.</li>
+          <li><strong>"We materialized the daily rollups"</strong> = lever 3. The revenue dashboard reads a small pre-computed table instead of re-scanning raw orders 500 times a day. Builder session b7 builds exactly this for Daybreak.</li>
+          <li><strong>"We set auto-suspend to 60 seconds"</strong> = lever 4. Compute now sleeps between queries instead of idling on the clock. In credit-based engines this is often the fastest fix on the list.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The question that reveals lever health</strong>
+          Ask: "if our data doubled tomorrow, would the bill double?" A tuned warehouse answers no - partitioning and materialized views break the link between data size and query cost. A raw one answers yes, and that is your roadmap conversation.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Performance and cost are the same lever<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Nothing in Part 2 was a cost trick. Reading fewer columns, skipping partitions, serving cached rollups - each one also makes the dashboard load faster. In a warehouse, waste is measured twice: once in seconds (the analyst waits) and once in dollars (the meter runs). This is why "make it cheaper" and "make it faster" are one project, not a trade-off - a genuinely unusual property. Spend it in the boardroom: the cost-review project is also the user-experience project.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The same levers, in each vendor's accent<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>When your team names a feature, map it back to the lever - the brand names change, the four moves never do:</p>
+        <table class="clean">
+          <thead><tr><th>Lever</th><th>Snowflake accent</th><th>BigQuery accent</th></tr></thead>
+          <tbody>
+            <tr><td><strong>1 · Ask for less</strong></td><td>Column pruning over micropartitions</td><td>Fewer columns = fewer bytes billed</td></tr>
+            <tr><td><strong>2 · Skip data</strong></td><td>Clustering keys, partition pruning</td><td>Partitioned + clustered tables</td></tr>
+            <tr><td><strong>3 · Compute once</strong></td><td>Materialized views, result cache</td><td>Materialized views, BI Engine cache</td></tr>
+            <tr><td><strong>4 · Right-size</strong></td><td>Auto-suspend, warehouse sizing</td><td>Slot commitments sized to need</td></tr>
+          </tbody>
+        </table>
+        <p>Redshift, Databricks, and even DuckDB tell the same story in their own vocabulary. If a proposed fix does not map to one of the four rows, ask which lever it is pulling.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: MONTHLY CONVERSATION ============ -->
+  <section class="section" id="monthly">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the ten-minute monthly review</span>
+      <h2>Five questions for your data lead <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">You do not manage warehouse cost by reading queries. You manage it by asking five questions once a month and listening for whether the answers exist. Teams that can answer them have the amber band under control; teams that cannot are about to surprise you.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The five questions, and what good answers sound like<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ol>
+          <li><strong>"What are our ten costliest queries this month?"</strong> Good: a list exists, with owners, and the top one is being fixed. Bad: "we'd have to look into that" - every engine ships this report; not reading it is a choice.</li>
+          <li><strong>"Is scan-per-dashboard trending up or down?"</strong> Good: down or flat while usage grows - the levers are working. Bad: nobody tracks per-dashboard cost, so growth and waste are indistinguishable.</li>
+          <li><strong>"What is our storage vs compute split?"</strong> Good: storage is a sliver and they know the ratio. Bad: a big storage bill usually means old copies and abandoned tables nobody dares delete - cheap to fix, embarrassing to admit.</li>
+          <li><strong>"What share of dashboard reads hit a cache or materialized view?"</strong> Good: the top dashboards read pre-computed rollups, raw scans are the exception. Bad: every glance at the revenue chart re-scans all of history.</li>
+          <li><strong>"Who reviews new dashboards before they ship?"</strong> Good: a named person checks scan cost and refresh schedule - a five-minute gate. Bad: anyone can point anything at the biggest table on a five-minute refresh, and eventually someone does.</li>
+        </ol>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The boardroom moment.</strong> A CEO opened a quarterly review with one slide: warehouse spend up 80%, revenue up 12%. The data lead had the answer ready: spend per active dashboard was down 30% - the growth was 40 new dashboards shipped for two new business lines, each reviewed and each cached. The conversation took ninety seconds and ended in a bigger budget. That is what the five questions buy: not a smaller bill, a defensible one.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>When the bill SHOULD go up<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A word of balance before you take the five questions home. The cheapest warehouse is an unused one. If the bill is rising because more teams make more decisions from data - new marts, new markets, a model in production - that is the system working. The target is not a small number; it is <strong>no amber band</strong>: every scanned terabyte serving someone. Judge the bill the way you judge a sales-travel budget: not by size, but by what came back.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Between sessions</span>
+      <h2>Take this back to your desk <span class="tag exercise">◐ 20 min</span></h2>
+    </div>
+    <ul>
+      <li>Get last month's warehouse bill and find the storage vs compute split. Predict it before you look - the gap between your guess and reality is this session's lesson landing.</li>
+      <li>Ask your data lead question 1 ("ten costliest queries?") this week. You are testing whether the list exists, not whether the queries are pretty.</li>
+      <li>Find one dashboard on an aggressive auto-refresh and ask who looks at it, and when. If the honest answer is "twice a day", you have found your first amber-band win.</li>
+      <li>Ask the doubling question: "if our data doubled, would the bill double?" Note which levers come up in the answer - and which never get mentioned.</li>
+      <li>Put a ten-minute "warehouse cost" slot in next month's ops review, using the five questions. The ritual matters more than the first month's answers.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">The leader track distills the cost-and-performance material of the major curricula to executive altitude - the physics and the questions, without the tuning labs. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - partitioning, indexing &amp; query performance (S3)</span><span class="note">Parts 1-2 · exec level; the hands-on version is builder b8</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">IBM Data Warehouse Fundamentals M2 - cubes &amp; materialized views</span><span class="note">Part 2 lever 3 · full depth lands in builder b7/b8</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">LinkedIn Learning Advanced Snowflake - micropartitions &amp; clustering</span><span class="note">Part 2 lever 2 · topic level only; brand-name mechanics stay in b8</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · Your warehouse bill doubled in six months. Statistically, the most likely culprit is...</p>
+      <button class="qopt" type="button">A · Storage costs rising as data accumulates</button>
+      <button class="qopt" type="button">B · The vendor raising prices</button>
+      <button class="qopt" type="button">C · Compute waste compounding - wide scans, always-on refreshes, unreviewed dashboards</button>
+      <p class="qwhy">Storage is the sliver; compute is the bulk, and waste hides inside it. Bills explode from fifty small habits compounding daily, almost never from one dramatic cause.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · "We materialized the daily revenue rollup" means...</p>
+      <button class="qopt" type="button">A · The answer is pre-computed once and served many times, instead of re-scanning raw orders on every dashboard view</button>
+      <button class="qopt" type="button">B · The data was moved to cheaper storage</button>
+      <button class="qopt" type="button">C · The dashboard was rebuilt in a new BI tool</button>
+      <p class="qwhy">Lever 3: compute once, read many. The revenue chart now reads a small pre-built table - faster for users and cheaper on the meter, at the same time.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">3 · The best sign that warehouse cost is under control is...</p>
+      <button class="qopt" type="button">A · The bill went down this quarter</button>
+      <button class="qopt" type="button">B · The team can answer the five questions - costliest queries, scan trends, splits, cache rates, review gate</button>
+      <button class="qopt" type="button">C · The team switched to a cheaper vendor</button>
+      <p class="qwhy">A falling bill might just mean falling usage. Control means visibility plus a gate: the amber band is measured, owned, and shrinking - even while the total grows with the business.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 5 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The meter</b><span>Warehouses charge for data touched (scans, compute-seconds), not answers returned. One number can cost two terabytes.</span></div>
+      <div class="cheat-item"><b>Bill anatomy</b><span>Storage = sliver. Compute = bulk. Waste hides inside compute: SELECT *, always-on refreshes, runaway joins.</span></div>
+      <div class="cheat-item"><b>Lever 1 · pruning</b><span>Ask for less: name columns, never SELECT *. Attention, not budget. Often the biggest single win.</span></div>
+      <div class="cheat-item"><b>Lever 2 · partitioning</b><span>Skip most of the data: slice by date so "last 30 days" never reads five years.</span></div>
+      <div class="cheat-item"><b>Lever 3 · materialize</b><span>Compute once, read many: pre-built rollups + caching serve the top dashboards.</span></div>
+      <div class="cheat-item"><b>Lever 4 · right-size</b><span>Warehouses that sleep: auto-suspend when idle, sized to the job, not the peak.</span></div>
+      <div class="cheat-item"><b>Five monthly questions</b><span>Costliest queries? Scan trend per dashboard? Storage/compute split? Cache hit rate? Who reviews new dashboards?</span></div>
+      <div class="cheat-item"><b>The real target</b><span>Not a small bill - no amber band. Cost and speed are the same lever; a rising bill serving real decisions is health.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 5 of 6 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a4-buy-landscape.html">← Prev: The buy landscape</a> &nbsp;·&nbsp; <a href="a6-warehouse-in-ai-era.html">Next: The warehouse in the AI era →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

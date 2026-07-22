@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 1 · Why a warehouse - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Leader session 1 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Leader track · Session 1 of 6</div>
+    <h1>Why a <span class="accent">warehouse</span></h1>
+    <p class="sub">Somebody on your team wants budget for "a data warehouse", and you are about to sign off on something you cannot picture. Six sessions fix that. The running example is Daybreak, a coffee-subscription brand whose app database just met its first real dashboard - badly. No code to write, ever: this track teaches the thinking, so you can fund, question, and steer the build with confidence.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+      <span class="chip time">Start here</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-20 · Two workloads</span>
+      <span class="a3" style="flex:5">20-42 · What a warehouse is + when not</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>How this track works</h2>
+    </div>
+    <p class="lede">Six 45-minute sessions that turn "data warehouse" from a budget line you nod at into a system you can reason about. Today: why warehouses exist at all, and - just as useful - when you should refuse to build one. Sessions ahead cover the shape of a warehouse (a2), why dashboards disagree and how to stop it (a3), the buy-vs-build landscape (a4), cost and risk (a5), and the questions to ask your data team (a6). Your builders have their own ten-session track where they actually construct Daybreak's warehouse; this track is the boardroom view of the same build.</p>
+    <div class="legend">
+      <span class="pill solid">Live - discussed in session</span>
+      <span class="pill light">Self-study - read after</span>
+      <span class="pill peach">Boardroom moment - a story to retell</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The one distinction the entire field rests on (transactions vs analytics), a plain-English definition of a warehouse you can repeat in any meeting - "a governed copy of our data, restructured for big questions" - and the three signals that tell you whether your company actually needs one yet.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: TWO WORKLOADS ============ -->
+  <section class="section" id="two-workloads">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers IBM DW Fundamentals M1, 365DS Foundations</span>
+      <h2>The day the dashboard froze the checkout <span class="tag concept">17 min live</span></h2>
+    </div>
+    <p class="lede">Daybreak's origin story, and probably your company's too. At 9am on promo day, marketing opened a "lifetime revenue by cohort" dashboard. That one question had to read <strong>every order ever placed</strong> - on the same database processing live checkouts. Carts spun, support lit up, and two very different kinds of work were suddenly fighting over one machine. Naming those two kinds is the whole foundation of this course.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The app lane handles many tiny row-level transactions; the analytics lane asks few huge questions across all history">
+        <style>
+          .wa1H { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .wa1T { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .wa1B { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .wa1C { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .wa1N { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .wa1Arr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#wa1Ah); }
+        </style>
+        <defs>
+          <marker id="wa1Ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="wa1H" x="40" y="36">The app lane · running the business</text>
+        <rect x="40" y="50" width="360" height="26" rx="6" fill="#26435C"/>
+        <text class="wa1T" x="52" y="68">thousands of tiny actions, all day</text>
+        <rect x="40" y="88" width="106" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="wa1B" x="52" y="108">take order</text>
+        <rect x="158" y="88" width="112" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="wa1B" x="170" y="108">charge card</text>
+        <rect x="282" y="88" width="118" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="wa1B" x="294" y="108">edit address</text>
+        <text class="wa1C" x="40" y="142">each touches ONE customer's row · must be instant and safe</text>
+        <text class="wa1C" x="40" y="160">this is the database your app was built on - and it is good at this</text>
+
+        <text class="wa1H" x="480" y="36">The analytics lane · understanding it</text>
+        <rect x="480" y="50" width="360" height="26" rx="6" fill="#26435C"/>
+        <text class="wa1T" x="492" y="68">a few huge questions, whole history</text>
+        <rect x="480" y="88" width="172" height="30" rx="6" fill="#5E8CB0"/>
+        <text class="wa1B" x="492" y="108">revenue by month</text>
+        <rect x="664" y="88" width="176" height="30" rx="6" fill="#5E8CB0"/>
+        <text class="wa1B" x="676" y="108">churn by cohort</text>
+        <text class="wa1C" x="480" y="142">each reads EVERY row, a few columns · must scan fast</text>
+        <text class="wa1C" x="480" y="160">run this on the app lane and the checkout pays the price</text>
+
+        <path class="wa1Arr" d="M400,103 C430,103 450,103 476,103"/>
+        <text class="wa1C" x="410" y="92">copy</text>
+
+        <rect x="40" y="200" width="800" height="1" fill="#E3EAF0"/>
+        <text class="wa1H" x="40" y="234">One machine, two opposite jobs - somebody always loses:</text>
+        <text class="wa1C" x="40" y="258">· the big scan hogs the database the checkout needs - customers feel it first</text>
+        <text class="wa1C" x="40" y="278">· and the app database's row-by-row design makes the big scan slow anyway</text>
+        <rect x="40" y="300" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="wa1N" x="64" y="312">A warehouse is a COPY of the app's data, restructured for the second shape of question.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - two lanes of work that want opposite database designs</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Two shapes of question<span class="mini">6 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The industry names are OLTP and OLAP, and you only need the shapes, not the acronyms. <strong>Transactions</strong> (OLTP) are narrow and urgent: one customer, one row, right now - "show Ava her subscription", "take this order". <strong>Analytics</strong> (OLAP) is wide and patient: every customer, all of history, but only two or three fields - "average order value by month for two years". Same data, opposite access patterns.</p>
+        <ul>
+          <li><strong>The app database is tuned for the first shape:</strong> fast, safe, one-row surgery. That is exactly what running a business needs.</li>
+          <li><strong>Your questions are the second shape:</strong> big scans that summarize. Boards, budgets, and forecasts all live here.</li>
+          <li><strong>The conflict is physical, not organizational:</strong> no amount of process fixes a machine being asked to do both at once.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The meeting-ready version</strong>
+          "Our app database answers 'what is happening to this customer right now'. Our leadership questions are 'what happened to all customers over all time'. Those want different machines."
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why "just add an index" fails<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>When the dashboard is slow, the first engineering reflex is "add an index". Worth understanding why that reflex is wrong here, because it is the cheapest-looking option on the table. An index is like a book's index: brilliant for jumping to <em>a few</em> specific rows. But analytics does not want a few rows - it wants <strong>all of them</strong>, summed up. There is no index for "read everything and add it up"; the data's physical layout itself has to change, and that means a separate, restructured copy.</p>
+        <ul>
+          <li><strong>Indexes find needles.</strong> Analytics wants the whole haystack, weighed.</li>
+          <li><strong>Every index also taxes the app:</strong> each new order now has to update the index too. You slow checkouts to speed a dashboard - the worst trade available.</li>
+          <li><strong>The honest fix has a name:</strong> get analytics off the app database. That sentence is the birth certificate of every warehouse.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Boardroom moment.</strong> A CFO once asked why the team could not "just tune the queries" instead of funding a warehouse. The data lead answered: "We can tune a query from 40 seconds to 20. We cannot tune away the fact that it reads four years of orders on the machine taking today's." Budget approved in that meeting. The physics argument beats the tooling argument every time.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Warehouse vs mart vs lake in one breath<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three terms your team will use interchangeably in front of you. They are not interchangeable:</p>
+        <ul>
+          <li><strong>Data warehouse:</strong> the structured, governed copy of your data, modeled for analytics. The center of gravity, and of this course.</li>
+          <li><strong>Data mart:</strong> a slice of the warehouse served to one team - a finance mart, a marketing mart. Marts come <em>from</em> the warehouse, not instead of it.</li>
+          <li><strong>Data lake:</strong> cheap storage for raw files of any shape - useful, but ungoverned by default. The "lakehouse" hybrid appears in session a4's landscape tour.</li>
+        </ul>
+        <p>Handy test: if someone proposes "a lake instead of a warehouse" for your KPI reporting, ask who is responsible for making the numbers in it trustworthy. The silence is the answer.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: WHAT A WAREHOUSE IS ============ -->
+  <section class="section" id="what-it-is">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers IBM DW Fundamentals M1, DLAI Data Engineering C4 serving framing</span>
+      <h2>What a warehouse actually is <span class="tag concept">12 min live</span></h2>
+    </div>
+    <p class="lede">Strip the vendor gloss and a warehouse is three moves: <strong>extract</strong> data out of the systems that run the business, <strong>restructure</strong> it for big questions, and <strong>point every dashboard at the copy</strong>. That last clause is the strategic one - it is what makes "single source of truth" more than a poster slogan. Not fully true in practice (session a3 is about why), but the ambition shapes everything.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Source systems flow into the warehouse, which feeds marts, which feed dashboards and AI">
+        <style>
+          .pi1H { font: 700 14px Inter, sans-serif; fill: #1C2833; }
+          .pi1T { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .pi1B { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .pi1I { font: 600 12px Inter, sans-serif; fill: #1C2833; }
+          .pi1C { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .pi1N { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .pi1Arr { stroke: #5E8CB0; stroke-width: 2; fill: none; marker-end: url(#pi1Ah); }
+        </style>
+        <defs>
+          <marker id="pi1Ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#5E8CB0"/>
+          </marker>
+        </defs>
+        <text class="pi1H" x="40" y="34">Source systems</text>
+        <rect x="40" y="48" width="150" height="32" rx="6" fill="#26435C"/>
+        <text class="pi1B" x="52" y="69">app database</text>
+        <rect x="40" y="88" width="150" height="32" rx="6" fill="#26435C"/>
+        <text class="pi1B" x="52" y="109">payments</text>
+        <rect x="40" y="128" width="150" height="32" rx="6" fill="#26435C"/>
+        <text class="pi1B" x="52" y="149">ad platforms</text>
+        <text class="pi1C" x="40" y="184">each keeps running</text>
+        <text class="pi1C" x="40" y="202">the business, untouched</text>
+
+        <path class="pi1Arr" d="M190,104 C230,104 240,104 266,104"/>
+        <text class="pi1C" x="204" y="92">extract</text>
+
+        <text class="pi1H" x="270" y="34">The warehouse</text>
+        <rect x="270" y="48" width="200" height="112" rx="8" fill="#3E6B8F"/>
+        <text class="pi1T" x="286" y="76">one governed copy</text>
+        <text class="pi1B" x="286" y="100">cleaned · typed</text>
+        <text class="pi1B" x="286" y="122">restructured for scans</text>
+        <text class="pi1B" x="286" y="144">history kept</text>
+        <text class="pi1C" x="270" y="184">rebuilt on a schedule -</text>
+        <text class="pi1C" x="270" y="202">minutes to hours behind live</text>
+
+        <path class="pi1Arr" d="M470,104 C500,104 510,104 536,104"/>
+        <text class="pi1C" x="484" y="92">serve</text>
+
+        <text class="pi1H" x="540" y="34">Marts</text>
+        <rect x="540" y="48" width="140" height="32" rx="6" fill="#5E8CB0"/>
+        <text class="pi1B" x="552" y="69">finance mart</text>
+        <rect x="540" y="88" width="140" height="32" rx="6" fill="#5E8CB0"/>
+        <text class="pi1B" x="552" y="109">marketing mart</text>
+        <text class="pi1C" x="540" y="184">per-team slices,</text>
+        <text class="pi1C" x="540" y="202">same underlying truth</text>
+
+        <path class="pi1Arr" d="M680,104 C706,104 712,104 736,104"/>
+
+        <text class="pi1H" x="740" y="34">Consumers</text>
+        <rect x="740" y="48" width="110" height="32" rx="6" fill="#EDF3F8" stroke="#A5C2D8"/>
+        <text class="pi1I" x="752" y="69">dashboards</text>
+        <rect x="740" y="88" width="110" height="32" rx="6" fill="#EDF3F8" stroke="#A5C2D8"/>
+        <text class="pi1I" x="752" y="109">AI &amp; models</text>
+        <text class="pi1C" x="740" y="184">every consumer reads</text>
+        <text class="pi1C" x="740" y="202">the copy, never the app</text>
+
+        <rect x="40" y="240" width="800" height="1" fill="#E3EAF0"/>
+        <rect x="40" y="264" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="pi1N" x="64" y="276">The strategic move: point EVERY dashboard at the copy - the app goes back to serving customers.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - extract, restructure, serve: the whole warehouse idea on one strip</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The copy is a feature, not overhead<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Executives often flinch at "we will maintain a second copy of all our data" - it sounds like waste. Reframe it: the copy is where every property analytics needs but the app cannot afford gets added.</p>
+        <ul>
+          <li><strong>The copy can be restructured</strong> for scanning without slowing a single checkout.</li>
+          <li><strong>The copy can keep history:</strong> the app overwrites a customer's plan when it changes; the warehouse remembers what it was last quarter - which is the only way "how did upgrades trend" is answerable.</li>
+          <li><strong>The copy can be governed:</strong> tested, documented, access-controlled. You cannot bolt audit discipline onto a live production database; you can build it into the copy.</li>
+          <li><strong>The copy is safely behind live</strong> - minutes to hours, by design. For "how did June go", that lag costs nothing.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>What it costs to run<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The number that surprises leaders in both directions: <strong>storing</strong> the copy is nearly free - cloud storage is pennies per gigabyte per month. The real bill is elsewhere.</p>
+        <ul>
+          <li><strong>Compute:</strong> modern warehouses charge when queries run. A well-run setup costs little; an unmanaged one - dashboards refreshing every 5 minutes, analysts scanning everything - burns quietly. Session a5 covers the levers.</li>
+          <li><strong>People:</strong> the pipelines that feed the warehouse need building and tending. This is usually the largest line item and the one most often left out of the pitch.</li>
+          <li><strong>The honest framing:</strong> you are not buying a product, you are standing up a small capability. Budget for the team, not just the tool.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Boardroom moment.</strong> Daybreak's founder asked the classic question: "Why does the data cost so little to store and so much to have?" The data lead's answer is worth stealing: "Storage is the parking. Compute is the fuel. Salaries are the drivers. You approved the parking and are surprised by the drivers." Every warehouse budget review since has used those three lines.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: WHEN NOT ============ -->
+  <section class="section" id="when-not">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the discipline to say not yet</span>
+      <h2>When you do NOT need one <span class="tag concept">10 min live</span></h2>
+    </div>
+    <p class="lede">The strongest credibility move a leader can make in this space is knowing when to say no. A warehouse is a capability with a payroll attached - and plenty of companies bought one two years before they needed it. Here is the honest decision rule.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The "not yet" profile<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>If this describes your company, a warehouse is premature:</p>
+        <ul>
+          <li><strong>One analyst, modest data:</strong> a read-only copy of the app database - or a single-file tool like DuckDB on an export - answers every question you have, today, for almost nothing.</li>
+          <li><strong>Questions are still ad hoc:</strong> nobody is checking the same number weekly. Warehouses shine when questions repeat; one-off curiosity is cheaper served by hand.</li>
+          <li><strong>No one owns definitions yet:</strong> if "active customer" means three things in three meetings, a warehouse will faithfully industrialize the confusion. Fix the vocabulary first (that is session a3's agenda).</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The question to ask your team</strong>
+          "What breaks if we wait six months?" If the answer is a shrug, wait. If the answer is specific and painful, keep reading.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The three buy signals<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three signals, any two of which mean the conversation is overdue:</p>
+        <ul>
+          <li><strong>Dashboards are timing out</strong> or - worse - slowing the product, like Daybreak's frozen checkout. The physics has arrived.</li>
+          <li><strong>Metric disputes are recurring:</strong> two teams bring two versions of the same number to the same meeting, monthly. You are paying a truth tax in executive hours.</li>
+          <li><strong>Compliance or audit asks</strong> for lineage - "show us where this number came from" - and the honest answer is a chain of spreadsheets and one analyst's memory.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Boardroom moment.</strong> Daybreak hit signal one and three in the same quarter: the frozen-checkout incident, then a payment partner's due-diligence team asking how refund numbers were produced. The board memo that unlocked the budget was one paragraph long and contained no technology words at all - just those two stories and a cost line.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Make vs buy - a preview of a4<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Once "do we need one" becomes yes, the next meeting is "which one" - and that is a landscape of cloud platforms (Snowflake, BigQuery, Redshift, Databricks and friends) plus a build-it-lean open-source path. Session a4 walks the landscape properly. For now, three anchors to resist vendor gravity:</p>
+        <ul>
+          <li><strong>The concepts in this track transfer everywhere:</strong> every vendor sells the same core idea you just learned - a governed, scan-shaped copy.</li>
+          <li><strong>Your leverage is highest before a contract is signed,</strong> not after. Arrive at a4 with your requirements, not their demo script.</li>
+          <li><strong>Migration is expensive; concepts are portable.</strong> Bet accordingly.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before next session <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Write down the three questions you most often ask of company data. For each, mark its shape: one customer right now, or all customers over time? Notice how many are the second shape.</li>
+      <li>Ask your data lead one question this week: "Which dashboards read directly from a production database?" The answer (and how long it takes to get) is itself a finding.</li>
+      <li>Score your company against Part 3's three buy signals. Zero, one, two, or three - bring the score to session a2.</li>
+      <li>In one meeting, try the reframe out loud: "Is this a right-now question or an all-of-history question?" Watch what it does to the conversation.</li>
+      <li>Optional: skim your last data-tooling invoice and find which line is storage and which is compute. No action needed - just know the ratio before a5.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This track distills the leadership-relevant core of the major data-warehousing curricula - the parts an executive actually needs, minus the labs. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - Module 1: warehouses, marts, lakes overview</span><span class="note">Parts 1-2 + self-study card · the systems tour continues in a4</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - Foundations</span><span class="note">Parts 1-3 · OLTP vs OLAP and why the copy exists</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DeepLearning.AI Data Engineering C4 (Joe Reis) - serving framing</span><span class="note">Part 2 · "analytics is a serving problem"; architecture depth lands in a2</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Which question is warehouse-shaped (OLAP), not app-shaped (OLTP)?</p>
+      <button class="qopt" type="button">A · "Show this customer's current subscription"</button>
+      <button class="qopt" type="button">B · "Average order value by month for the last two years"</button>
+      <button class="qopt" type="button">C · "Update Ava Chen's delivery address"</button>
+      <p class="qwhy">Warehouse questions scan all rows but few columns - every order, two fields, summarized. One-row lookups and edits are the app database's home turf.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · The dashboard is slow and it is dragging the product down with it. Why is "just add an index" the wrong fix?</p>
+      <button class="qopt" type="button">A · Indexes are an outdated technology</button>
+      <button class="qopt" type="button">B · Indexes only work on small tables</button>
+      <button class="qopt" type="button">C · Indexes speed up finding a few rows - analytics reads all rows, and each index also taxes every app write</button>
+      <p class="qwhy">There is no index for "read everything and sum it". The layout itself must change, which means a separate restructured copy - the warehouse.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Your company: one analyst, small data, no repeated weekly questions, no metric disputes. The right move is...</p>
+      <button class="qopt" type="button">A · Not yet - a read-only copy or a simple local tool covers today's needs for almost nothing</button>
+      <button class="qopt" type="button">B · Build the warehouse now so you are ready in two years</button>
+      <button class="qopt" type="button">C · Buy the biggest platform so you never migrate</button>
+      <p class="qwhy">A warehouse is a capability with a payroll. Without the buy signals - timeouts, recurring metric disputes, compliance asks - you are industrializing questions nobody is asking yet.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 1 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Two shapes</b><span>App questions: one row, right now. Leadership questions: all rows, all history, few columns. Opposite designs.</span></div>
+      <div class="cheat-item"><b>A warehouse is</b><span>a governed COPY of your data, restructured for big questions - not a faster app database.</span></div>
+      <div class="cheat-item"><b>Why a copy</b><span>The copy can be scan-shaped, keep history, and carry governance - without slowing one checkout.</span></div>
+      <div class="cheat-item"><b>Why not an index</b><span>Indexes find few rows; analytics reads all rows. And every index taxes every app write.</span></div>
+      <div class="cheat-item"><b>The cost truth</b><span>Storage is pennies. Compute and people are the bill. Budget the team, not just the tool.</span></div>
+      <div class="cheat-item"><b>Not yet, if</b><span>one analyst + small data + no repeated questions. A read-only copy covers it for almost nothing.</span></div>
+      <div class="cheat-item"><b>Buy signals</b><span>Dashboards timing out · recurring metric disputes · compliance asking for lineage. Two of three = overdue.</span></div>
+      <div class="cheat-item"><b>Warehouse / mart / lake</b><span>Governed copy / per-team slice of it / raw file storage. Marts come FROM the warehouse.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 1 of 6 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="a2-shape-of-a-warehouse.html">Next: The shape of a warehouse →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

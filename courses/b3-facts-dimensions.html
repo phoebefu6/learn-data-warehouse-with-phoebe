@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 3 · Facts and dimensions - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Builder session 3 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Builder track · Session 3 of 10</div>
+    <h1><span class="accent">Facts</span> and dimensions</h1>
+    <p class="sub">Staging gave Daybreak trusted copies - but a trusted copy of OLTP is still shaped like OLTP. Tonight you learn the modeling move the whole field is named after: split the world into facts (events with numbers) and dimensions (nouns with context), arrange them as a star, and watch the founder's hardest questions collapse into one-join queries. You will build the star live, on the staging layer you poured in b2.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · DE · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · Grain, facts, dims &amp; schools</span>
+      <span class="a3" style="flex:5">20-42 · Build-along: the star</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the build stands</h2>
+    </div>
+    <p class="lede">The staging layer is live: <code>stg_customers</code>, <code>stg_products</code>, <code>stg_orders</code>, <code>stg_order_items</code>, <code>stg_subscriptions</code> - typed, gated, replayable. But answering "revenue by month by city" still takes a three-table join through OLTP-shaped tables, and every analyst writes that join slightly differently. Tonight you reshape staging into the <strong>core layer</strong>: one fact table ringed by dimensions. The shape is called a star, and it is the default answer-machine of the entire industry.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live warehouse - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The one-sentence habit that prevents most modeling disasters (declare the grain first), a working definition of fact vs dimension you can apply to any dataset, the Inmon vs Kimball map, and Daybreak's first star schema - built by you, queried by you, live.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: GRAIN, FACTS, DIMS ============ -->
+  <section class="section" id="grain-facts-dims">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers DLAI C4 M1 star schema, IBM M2 facts &amp; dimensional modeling</span>
+      <h2>Grain first, then facts, then dimensions <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">Before any SQL, a dimensional modeler says one sentence out loud: <strong>"One row of this fact table is one order line."</strong> That sentence is the <em>grain</em>, and every later decision - what to measure, what to join, what to sum - either honors it or breaks the table. Facts are <strong>events with numbers</strong> (an order line happened: quantity 2, price 16.00). Dimensions are <strong>nouns with context</strong> (who bought, what they bought, when).</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Daybreak's star schema: fct_order_line in the center, dim_customer, dim_product and dim_date around it">
+        <style>
+          .stH { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .stK { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .stB { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #FFFFFF; }
+          .stD { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #1C2833; }
+          .stC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .stN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .stArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#stAh); }
+        </style>
+        <defs>
+          <marker id="stAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+
+        <text class="stK" x="360" y="30">dim_date</text>
+        <rect x="340" y="42" width="200" height="26" rx="6" fill="#5E8CB0"/>
+        <text class="stB" x="352" y="60">date_key (PK)</text>
+        <rect x="340" y="72" width="200" height="24" rx="5" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="stD" x="352" y="88">year · month · weekend</text>
+
+        <text class="stK" x="40" y="176">dim_customer</text>
+        <rect x="20" y="188" width="210" height="26" rx="6" fill="#5E8CB0"/>
+        <text class="stB" x="32" y="206">customer_key (PK)</text>
+        <rect x="20" y="218" width="210" height="24" rx="5" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="stD" x="32" y="234">name · city · plan</text>
+
+        <text class="stK" x="670" y="176">dim_product</text>
+        <rect x="650" y="188" width="210" height="26" rx="6" fill="#5E8CB0"/>
+        <text class="stB" x="662" y="206">product_key (PK)</text>
+        <rect x="650" y="218" width="210" height="24" rx="5" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="stD" x="662" y="234">name · category · roast</text>
+
+        <text class="stK" x="330" y="150">fct_order_line</text>
+        <rect x="310" y="162" width="260" height="26" rx="6" fill="#26435C"/>
+        <text class="stH" x="322" y="180">grain: one row = one order line</text>
+        <rect x="310" y="194" width="260" height="24" rx="5" fill="#3E6B8F"/>
+        <text class="stB" x="322" y="210">customer_key · product_key</text>
+        <rect x="310" y="224" width="260" height="24" rx="5" fill="#3E6B8F"/>
+        <text class="stB" x="322" y="240">date_key · order_id</text>
+        <rect x="310" y="254" width="260" height="24" rx="5" fill="#F59E0B"/>
+        <text class="stD" x="322" y="270">quantity · unit_price · revenue</text>
+        <rect x="310" y="284" width="260" height="24" rx="5" fill="#3E6B8F"/>
+        <text class="stB" x="322" y="300">status · channel</text>
+
+        <path class="stArr" d="M440,100 C440,120 440,140 440,160"/>
+        <path class="stArr" d="M232,222 C260,222 280,222 308,222"/>
+        <path class="stArr" d="M648,222 C620,222 600,222 572,222"/>
+
+        <text class="stC" x="20" y="270">who bought</text>
+        <text class="stC" x="760" y="270">what they bought</text>
+        <text class="stC" x="560" y="120">when it happened</text>
+
+        <rect x="20" y="330" width="840" height="1" fill="#E3EAF0"/>
+        <text class="stC" x="20" y="356">Amber row = MEASURES: the numbers you sum and average. Blue rows = keys and context riding on the fact.</text>
+        <rect x="20" y="374" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="stN" x="44" y="386">Every founder question becomes: pick measures from the center, slice by any arm. One join per arm.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - Daybreak's star: one fact in the middle, three dimensions as arms</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Say the grain before you write any SQL<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Why one row = one order <em>line</em> and not one order? Because order 1001 contains two products, and if a row were a whole order you could not ask "revenue by product" without exploding the table. Grain is chosen at the finest level the business will ever ask about - you can always roll up, you can never drill below the grain.</p>
+        <ul>
+          <li><strong>Fact table:</strong> one row per event at the declared grain, holding <em>measures</em> (numeric, summable: quantity, line_revenue) plus foreign keys to each dimension.</li>
+          <li><strong>Dimension table:</strong> one row per noun (per customer, per product, per calendar day), holding descriptive <em>attributes</em> you filter and group by.</li>
+          <li><strong>The test:</strong> "Can I SUM it meaningfully?" - measure, goes on the fact. "Do I say GROUP BY or WHERE with it?" - attribute, goes on a dimension.</li>
+        </ul>
+        <p>Prove today's grain to yourself - the fact will have more rows than there are orders, because orders fan out into lines:</p>
+        <div class="sqlbox" data-setup="staging" data-caption="More lines than orders: that gap IS the grain decision, visible in counts.">
+          <pre class="sql-src">SELECT (SELECT count(*) FROM stg_orders)      AS orders,
+       (SELECT count(*) FROM stg_order_items) AS order_lines;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Grain disasters, so you recognize them early<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Mixed grain:</strong> someone appends order-level shipping fees into the line-level fact. SUM(line_revenue) is now wrong in a way nobody notices for a quarter.</li>
+          <li><strong>Grain too coarse:</strong> the fact stores one row per order with a "top product" column. Six months later the founder asks for revenue by product, and the answer is a rebuild.</li>
+          <li><strong>Undeclared grain:</strong> the table has no stated grain at all, so every analyst guesses. Two dashboards, two numbers, one awkward meeting. The fix costs one sentence, said early.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: TWO SCHOOLS ============ -->
+  <section class="section" id="two-schools">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers DLAI Inmon vs Kimball &amp; normalization</span>
+      <h2>Inmon vs Kimball: two roads to the core <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">The SQL course taught you to <em>normalize</em> - split data into small tables so every fact lives in exactly one place. Analytics deliberately walks that road backwards: we <strong>denormalize</strong>, copying context onto wide dimensions so questions need fewer joins. How much to denormalize, and when, is the field's oldest argument - and it has two named schools.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Inmon builds a normalized enterprise core first then marts; Kimball builds dimensional marts on conformed dimensions from day one">
+        <style>
+          .ikH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .ikT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .ikB { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .ikC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .ikN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .ikArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#ikAh); }
+        </style>
+        <defs>
+          <marker id="ikAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="ikH" x="30" y="34">Inmon · enterprise first</text>
+        <rect x="30" y="48" width="120" height="30" rx="6" fill="#26435C"/>
+        <text class="ikB" x="42" y="68">sources</text>
+        <path class="ikArr" d="M150,63 C170,63 176,63 192,63"/>
+        <rect x="194" y="48" width="180" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="ikB" x="206" y="68">normalized core (3NF)</text>
+        <path class="ikArr" d="M374,63 C394,63 400,63 416,63"/>
+        <rect x="418" y="48" width="170" height="30" rx="6" fill="#5E8CB0"/>
+        <text class="ikB" x="430" y="68">dimensional marts</text>
+        <text class="ikC" x="30" y="104">Model the WHOLE enterprise in normal form first; serve teams from marts carved off it.</text>
+        <text class="ikC" x="30" y="122">Strength: one integrated truth. Cost: months before the first dashboard ships.</text>
+
+        <text class="ikH" x="30" y="168">Kimball · dimensional from day one</text>
+        <rect x="30" y="182" width="120" height="30" rx="6" fill="#26435C"/>
+        <text class="ikB" x="42" y="202">sources</text>
+        <path class="ikArr" d="M150,197 C170,197 176,197 192,197"/>
+        <rect x="194" y="182" width="120" height="30" rx="6" fill="#3E6B8F"/>
+        <text class="ikB" x="206" y="202">staging</text>
+        <path class="ikArr" d="M314,197 C334,197 340,197 356,197"/>
+        <rect x="358" y="182" width="230" height="30" rx="6" fill="#5E8CB0"/>
+        <text class="ikB" x="370" y="202">stars on conformed dimensions</text>
+        <text class="ikC" x="30" y="238">Build a star per business process, sharing one set of dimensions (the "bus").</text>
+        <text class="ikC" x="30" y="256">Strength: answers this quarter. Cost: discipline - dims must stay conformed (b4).</text>
+
+        <rect x="620" y="48" width="230" height="208" rx="8" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="ikH" x="636" y="76">This track walks</text>
+        <text class="ikH" x="636" y="96">Kimball's road</text>
+        <text class="ikC" x="636" y="122">Daybreak needs answers</text>
+        <text class="ikC" x="636" y="140">this quarter, not a two-</text>
+        <text class="ikC" x="636" y="158">year enterprise model.</text>
+        <text class="ikC" x="636" y="184">Most modern teams start</text>
+        <text class="ikC" x="636" y="202">here for the same reason.</text>
+
+        <rect x="30" y="284" width="820" height="1" fill="#E3EAF0"/>
+        <rect x="30" y="300" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="ikN" x="54" y="312">Third option exists: One Big Table - everything denormalized flat. When that wins (and loses) is b9.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - two schools, one choice for Daybreak: Kimball, because answers are due this quarter</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Inmon in one card<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Bill Inmon, "father of the data warehouse": build a <strong>normalized (3NF) enterprise core</strong> first - every subject area, every relationship, modeled once for the whole company - then carve team-facing dimensional marts off it. Top-down. You get one integrated truth and superb consistency; you pay in time-to-first-answer and in needing enterprise-wide agreement before shipping. Big regulated organizations with long horizons still choose this road.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Kimball in one card<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Ralph Kimball: skip the enterprise 3NF core - go <strong>dimensional from day one</strong>. Build one star per business process (orders tonight, subscriptions in b7), and make them agree by sharing <strong>conformed dimensions</strong> - the same dim_customer joined by every fact, a "bus" of shared nouns. Bottom-up. You ship answers in weeks; the discipline you owe in return is keeping those dimensions conformed, which is exactly what b4 teaches.</p>
+        <div class="callout tip">
+          <strong>Why denormalize at all, after the SQL course taught normalizing?</strong> Apps optimize for safe single-row writes: normalize so every fact is stored once. Analytics optimizes for wide reads: copy context onto dimensions so a question is one join instead of seven. Same data, opposite pressures - both designs are correct for their job.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: MAPPING ============ -->
+  <section class="section" id="oltp-to-star">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · from OLTP to star</span>
+      <h2>Mapping Daybreak's columns to their star homes <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Modeling is deciding, column by column: is this a measure (goes on the fact), an attribute (goes on a dimension), or a key (glue)? Here is tonight's full mapping - read it once now, then watch Demo 1 make it real.</p>
+
+    <table class="clean">
+      <thead><tr><th>Source column</th><th>Star home</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>order_items.quantity</code>, <code>unit_price</code></td><td>measures on <strong>fct_order_line</strong></td><td>numeric, summable, at the grain</td></tr>
+        <tr><td><code>stg_order_items.line_amount</code></td><td>measure <strong>line_revenue</strong> on the fact</td><td>computed once in staging, renamed for the business</td></tr>
+        <tr><td><code>customers.name</code>, <code>city</code>, <code>country</code>, <code>plan</code></td><td>attributes on <strong>dim_customer</strong></td><td>context about WHO - you group by these, never sum them</td></tr>
+        <tr><td><code>products.name</code>, <code>category</code>, <code>roast</code>, <code>price</code></td><td>attributes on <strong>dim_product</strong></td><td>context about WHAT</td></tr>
+        <tr><td><code>orders.order_date</code></td><td><strong>date_key</strong> on the fact, joining <strong>dim_date</strong></td><td>WHEN - the calendar becomes its own dimension (b4)</td></tr>
+        <tr><td><code>orders.status</code>, <code>channel</code></td><td>attributes ON the fact</td><td>low-cardinality event context - not worth a dimension yet</td></tr>
+        <tr><td><code>orders.order_id</code></td><td>degenerate dimension on the fact</td><td>an ID with no attributes of its own - rides along for tracing</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Status on the fact - a judgment call, made visibly.</strong> Purists would build dim_order_status. With three values and no attributes, that dimension would be ceremony. Kimball's own guidance blesses keeping small event context on the fact. The skill is not following a rule - it is writing the decision down where the next analyst can see it.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Build the star, live <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Four moves: two dimensions, one fact, one proof. The playground starts with b2's staging layer already in place (<code>data-setup="staging"</code>), so this script is exactly the core-layer build that would run after staging in production.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Move 1 - dim_customer:</strong> copy the staged customers and stamp each row with a <code>row_number()</code> surrogate key. Why not reuse customer_id? Hold that thought - it is b4's opening argument.</p></div>
+      <div class="step"><p><strong>Move 2 - dim_product:</strong> same pattern, product side. Every dimension build in this track will look like these two.</p></div>
+      <div class="step"><p><strong>Move 3 - fct_order_line:</strong> join orders to their lines, swap natural IDs for the new surrogate keys, keep the measures. Note the grain holds: one row out per order line in.</p></div>
+      <div class="step"><p><strong>Move 4 - prove it:</strong> the final SELECT counts each table. Check dim_customer = 15, dim_product = 8, and the fact matches your Part 1 line count.</p></div>
+    </div>
+
+    <div class="sqlbox" data-setup="staging" data-caption="The whole core-layer build - staging in, star out, one replayable script.">
+      <pre class="sql-src">CREATE TABLE dim_customer AS
+SELECT row_number() OVER (ORDER BY customer_id) AS customer_key,
+       customer_id, name, city, country, plan, signup_date
+FROM stg_customers;
+
+CREATE TABLE dim_product AS
+SELECT row_number() OVER (ORDER BY product_id) AS product_key,
+       product_id, name, category, price, roast
+FROM stg_products;
+
+CREATE TABLE fct_order_line AS
+SELECT dc.customer_key,
+       dp.product_key,
+       o.order_date     AS date_key,
+       o.order_id,
+       oi.quantity,
+       oi.unit_price,
+       oi.line_amount   AS line_revenue,
+       o.status,
+       o.channel
+FROM stg_orders o
+JOIN stg_order_items oi USING (order_id)
+JOIN dim_customer dc ON o.customer_id = dc.customer_id
+JOIN dim_product  dp ON oi.product_id = dp.product_id;
+
+SELECT 'dim_customer' AS star_table,
+       count(*) AS row_count FROM dim_customer
+UNION ALL
+SELECT 'dim_product', count(*) FROM dim_product
+UNION ALL
+SELECT 'fct_order_line', count(*) FROM fct_order_line;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>The fan-out check you should always run.</strong> If fct_order_line came out with MORE rows than stg_order_items, a join duplicated rows - usually a dimension with a repeated natural key. The b2 duplicate pattern (GROUP BY key HAVING count &gt; 1) on the dimension finds the culprit in seconds. Grain declared, grain verified.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>The payoff: founder questions as one-join queries <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">These playgrounds start with the finished star (<code>data-setup="star"</code>, which also includes dim_date - built properly in b4). Every question is the same shape: measures from the center, one join per arm you slice by. Feel how little SQL each answer needs now.</p>
+
+    <div class="steps">
+      <div class="step"><p>Run each query as written, then bend it: swap the dimension attribute you group by, or drop the status filter and watch refunds sneak into revenue.</p></div>
+      <div class="step"><p>Notice what you never do: no CAST, no quantity * unit_price, no five-table joins. Staging and the star already paid those taxes.</p></div>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Revenue by month - join the date arm<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="star" data-caption="dim_date turns 'by month' into a join + group by - no date functions in sight.">
+          <pre class="sql-src">SELECT d.year, d.month_name,
+       ROUND(SUM(f.line_revenue), 2) AS revenue
+FROM fct_order_line f
+JOIN dim_date d ON f.date_key = d.date_key
+WHERE f.status = 'completed'
+GROUP BY d.year, d.month, d.month_name
+ORDER BY d.year, d.month;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · Revenue by city - join the customer arm<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="star" data-caption="Swap c.city for c.plan or c.country - same query shape, new business question.">
+          <pre class="sql-src">SELECT c.city, c.country,
+       ROUND(SUM(f.line_revenue), 2) AS revenue
+FROM fct_order_line f
+JOIN dim_customer c ON f.customer_key = c.customer_key
+WHERE f.status = 'completed'
+GROUP BY c.city, c.country
+ORDER BY revenue DESC;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · Top products - join the product arm<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="star" data-caption="Add p.category to see the mix; add d.month_name via a second join to see it over time.">
+          <pre class="sql-src">SELECT p.name, p.category,
+       SUM(f.quantity) AS units,
+       ROUND(SUM(f.line_revenue), 2) AS revenue
+FROM fct_order_line f
+JOIN dim_product p ON f.product_key = p.product_key
+WHERE f.status = 'completed'
+GROUP BY p.name, p.category
+ORDER BY revenue DESC
+LIMIT 3;</pre>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Write the grain sentence for a subscriptions fact ("one row = one ___") and list its measures and dimension arms. You will build it for real in b7.</li>
+      <li>On the star setup, answer: which channel sells more Equipment, web or app? Two arms this time - dim_product for category, channel is already on the fact.</li>
+      <li>Take any spreadsheet or table you use at work and label every column M (measure), A (attribute), or K (key). Where labels feel forced, you have found a grain problem.</li>
+      <li>Explain Inmon vs Kimball to a colleague in two sentences each, then say which road their company is on. Most people have never noticed they are on one.</li>
+      <li>Bring your star to b4 - the dimensions get their full treatment next: surrogate keys defended, dim_date built properly, conformed dims explained.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the dimensional-modeling core of the major curricula as one live build. Certificates, graded labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DeepLearning.AI Data Engineering C4 - Module 1: star schema, Inmon vs Kimball, normalization</span><span class="note">Parts 1-2 · both schools mapped, Kimball road chosen and justified</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - Module 2: facts &amp; dimensional modeling</span><span class="note">Parts 1 + 3 + Demo 1 · lab twin: their modeling exercise, on Daybreak</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - dimensional modeling &amp; star schemas</span><span class="note">Parts 1 + 3 · grain, measures vs attributes, star anatomy</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">365DS - advanced schemas (snowflake, galaxy)</span><span class="note">Part 2 note · One Big Table and schema variants land in b9</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What is the "grain" of a fact table?</p>
+      <button class="qopt" type="button">A · The number of rows it contains after the first load</button>
+      <button class="qopt" type="button">B · The declared meaning of exactly one row - for Daybreak, "one row = one order line" - fixed before any SQL is written</button>
+      <button class="qopt" type="button">C · The compression ratio the columnar engine achieves on it</button>
+      <p class="qwhy">Grain is a sentence, not a statistic. Declare it first and every column decision follows; skip it and mixed-grain rows quietly corrupt every SUM downstream.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Which of these belongs on the fact table rather than a dimension?</p>
+      <button class="qopt" type="button">A · The customer's city, because founders love maps</button>
+      <button class="qopt" type="button">B · The product's roast level, because it rarely changes</button>
+      <button class="qopt" type="button">C · line_revenue, because it is a numeric measure that gets summed at the grain</button>
+      <p class="qwhy">Measures - numeric, summable, born at the event - live on the fact. City and roast are attributes: context you filter and group by, at home on dim_customer and dim_product.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Demo 1 stamped dimensions with row_number() surrogate keys instead of reusing customer_id. The deeper reason, coming in b4, is...</p>
+      <button class="qopt" type="button">A · Warehouse-owned keys insulate the star from source-system changes and make room for history (multiple versions of one customer)</button>
+      <button class="qopt" type="button">B · Integers join faster than other integers</button>
+      <button class="qopt" type="button">C · DuckDB cannot join on a column named customer_id</button>
+      <p class="qwhy">Natural keys belong to the source system: they can change, collide across sources, and can only ever point at one version of a customer. Surrogate keys fix all three - b4 opens with this argument, and b5 (slowly changing dimensions) depends on it.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 3 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Grain</b><span>One sentence: "one row of this fact = one ___". Say it before any SQL. Finest level the business will ask about.</span></div>
+      <div class="cheat-item"><b>Fact table</b><span>Events with numbers: measures at the grain + foreign keys to each dimension. Daybreak's: fct_order_line.</span></div>
+      <div class="cheat-item"><b>Dimension</b><span>Nouns with context: one row per customer / product / day, wide descriptive attributes you group and filter by.</span></div>
+      <div class="cheat-item"><b>Measure vs attribute</b><span>Can you SUM it meaningfully? Measure, on the fact. Do you GROUP BY it? Attribute, on a dimension.</span></div>
+      <div class="cheat-item"><b>Star schema</b><span>One fact in the center, one join per dimension arm. Every founder question = measures + slices.</span></div>
+      <div class="cheat-item"><b>Inmon vs Kimball</b><span>Inmon: normalized enterprise core first, marts after. Kimball: stars + conformed dims from day one. This track: Kimball.</span></div>
+      <div class="cheat-item"><b>Degenerate dimension</b><span>An ID (order_id) kept on the fact with no dimension table of its own - nothing to describe, useful for tracing.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b4 builds dimensions properly: surrogate keys defended, dim_date from generate_series, conformed dims.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 3 of 10 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b2-architecture-staging.html">← Prev: Architecture and the staging layer</a> &nbsp;·&nbsp; <a href="b4-building-dimensions.html">Next: Building dimensions →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/dw-seed.js?v=1"></script>
+<script src="../assets/warehouse-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

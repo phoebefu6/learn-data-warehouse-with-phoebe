@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 2 · Architecture and the staging layer - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Builder session 2 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Builder track · Session 2 of 10</div>
+    <h1>Architecture and the <span class="accent">staging layer</span></h1>
+    <p class="sub">Session b1 proved WHY the warehouse exists. Tonight you pour its foundation. Every warehouse worth trusting is built in layers - staging, core, marts - and the first layer is the humblest and the most important: a typed, renamed, quality-gated, replayable copy of the source. By the end of this session Daybreak has a real staging layer, built live in your browser, with four quality gates standing guard at the door.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · DE · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · Three layers &amp; staging</span>
+      <span class="a3" style="flex:5">20-42 · Build-along: quality gates</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the build stands</h2>
+    </div>
+    <p class="lede">Last session you felt the OLTP vs OLAP split and let a columnar engine loose on 300,000 rows. But Daybreak's warehouse itself is still an empty lot: six raw OLTP tables with text dates, revenue split across two tables, and refunds mixed into every count. Tonight the first layer goes in. Staging is where raw source data gets typed, renamed, and inspected before anything downstream is allowed to touch it - and the rule you will repeat for the rest of your career is simple: <strong>never model on raw</strong>.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live warehouse - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The three-layer mental map every warehouse team shares (staging, core, marts), a full staging layer for Daybreak built with CREATE TABLE AS + CAST, and four copy-paste quality gates - row counts, key uniqueness, null scan, freshness - that catch bad loads before they poison a dashboard.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THREE LAYERS ============ -->
+  <section class="section" id="three-layers">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers IBM DW Fundamentals M2 architectures &amp; staging areas, 365DS design</span>
+      <h2>The three layers: staging, core, marts <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">A warehouse is not one big pile of tables - it is an assembly line. Raw source lands in <strong>staging</strong>, gets modeled into the <strong>core</strong> (the star schema of b3-b5), and gets served to teams as <strong>marts</strong> (b7). Each layer has one job, and the discipline of not skipping layers is what separates a warehouse from a swamp.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Daybreak's source tables flow through staging into the core and out to marts">
+        <style>
+          .lyH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .lyT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .lyB { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #FFFFFF; }
+          .lyC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .lyN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .lyArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#lyAh); }
+        </style>
+        <defs>
+          <marker id="lyAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="lyH" x="30" y="34">Source · app DB</text>
+        <rect x="30" y="48" width="170" height="26" rx="6" fill="#26435C"/>
+        <text class="lyT" x="42" y="66">raw OLTP tables</text>
+        <rect x="30" y="82" width="170" height="24" rx="5" fill="#3E6B8F"/><text class="lyB" x="42" y="98">orders</text>
+        <rect x="30" y="112" width="170" height="24" rx="5" fill="#3E6B8F"/><text class="lyB" x="42" y="128">order_items</text>
+        <rect x="30" y="142" width="170" height="24" rx="5" fill="#3E6B8F"/><text class="lyB" x="42" y="158">customers ...</text>
+        <text class="lyC" x="30" y="192">dates as TEXT, app</text>
+        <text class="lyC" x="30" y="210">names, no gates</text>
+
+        <path class="lyArr" d="M200,125 C220,125 230,125 248,125"/>
+
+        <text class="lyH" x="250" y="34">1 · Staging</text>
+        <rect x="250" y="48" width="170" height="26" rx="6" fill="#26435C"/>
+        <text class="lyT" x="262" y="66">typed copies</text>
+        <rect x="250" y="82" width="170" height="24" rx="5" fill="#5E8CB0"/><text class="lyB" x="262" y="98">stg_orders</text>
+        <rect x="250" y="112" width="170" height="24" rx="5" fill="#5E8CB0"/><text class="lyB" x="262" y="128">stg_order_items</text>
+        <rect x="250" y="142" width="170" height="24" rx="5" fill="#5E8CB0"/><text class="lyB" x="262" y="158">stg_customers ...</text>
+        <text class="lyC" x="250" y="192">CAST + rename +</text>
+        <text class="lyC" x="250" y="210">quality gates · TONIGHT</text>
+
+        <path class="lyArr" d="M420,125 C440,125 450,125 468,125"/>
+
+        <text class="lyH" x="470" y="34">2 · Core</text>
+        <rect x="470" y="48" width="170" height="26" rx="6" fill="#26435C"/>
+        <text class="lyT" x="482" y="66">star schema</text>
+        <rect x="470" y="82" width="170" height="24" rx="5" fill="#3E6B8F"/><text class="lyB" x="482" y="98">fct_order_line</text>
+        <rect x="470" y="112" width="170" height="24" rx="5" fill="#3E6B8F"/><text class="lyB" x="482" y="128">dim_customer</text>
+        <rect x="470" y="142" width="170" height="24" rx="5" fill="#3E6B8F"/><text class="lyB" x="482" y="158">dim_date ...</text>
+        <text class="lyC" x="470" y="192">facts + dimensions,</text>
+        <text class="lyC" x="470" y="210">history · b3-b5</text>
+
+        <path class="lyArr" d="M640,125 C660,125 670,125 688,125"/>
+
+        <text class="lyH" x="690" y="34">3 · Marts</text>
+        <rect x="690" y="48" width="160" height="26" rx="6" fill="#26435C"/>
+        <text class="lyT" x="702" y="66">team slices</text>
+        <rect x="690" y="82" width="160" height="24" rx="5" fill="#5E8CB0"/><text class="lyB" x="702" y="98">finance mart</text>
+        <rect x="690" y="112" width="160" height="24" rx="5" fill="#5E8CB0"/><text class="lyB" x="702" y="128">marketing mart</text>
+        <rect x="690" y="142" width="160" height="24" rx="5" fill="#5E8CB0"/><text class="lyB" x="702" y="158">ops mart</text>
+        <text class="lyC" x="690" y="192">views + rollups per</text>
+        <text class="lyC" x="690" y="210">team · b7</text>
+
+        <rect x="30" y="240" width="820" height="1" fill="#E3EAF0"/>
+        <text class="lyC" x="30" y="268">Each layer only reads from the layer before it. Dashboards never touch staging; models never touch raw.</text>
+        <text class="lyC" x="30" y="288">Break the load? Re-run staging from source - the copy is replayable, nothing downstream is hand-patched.</text>
+        <rect x="30" y="308" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="lyN" x="54" y="320">Tonight you build layer 1 - the dock where every load is inspected before it enters the building.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - Daybreak's assembly line: raw source, staging, core, marts</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why staging exists: four promises<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Staging looks boring - it is mostly SELECT with a few CASTs. Its value is the four promises it makes to every layer above it:</p>
+        <ul>
+          <li><strong>Typed:</strong> text dates become DATE, so month grouping and date math stop being string tricks. The source's mess ends here.</li>
+          <li><strong>Renamed:</strong> app-developer names become analyst names, and computed basics (like <code>line_amount</code>) get calculated once, in one place.</li>
+          <li><strong>Quality-gated:</strong> every load passes row-count, uniqueness, null, and freshness checks before anything downstream sees it. Part 3 builds all four.</li>
+          <li><strong>Replayable:</strong> staging is derived entirely from source by a script. Drop it, re-run it, get the same thing. No hand-edited table ever earns trust.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The rule to tattoo somewhere:</strong> never model on raw. The moment a dashboard or a star schema reads the source tables directly, every source quirk - a renamed column, a text date, a test row - becomes a production incident downstream.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where staging lives in real stacks<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>In this course staging is a set of tables inside DuckDB. In production the idea is identical, only the address changes:</p>
+        <ul>
+          <li><strong>Cloud warehouses:</strong> a <code>staging</code> schema (or database) in Snowflake / BigQuery / Redshift, loaded by an ingestion tool, rebuilt or appended on a schedule.</li>
+          <li><strong>dbt shops:</strong> staging is literally a folder of models named <code>stg_*</code> - one per source table, CAST and rename only. The convention you learn tonight is the industry convention.</li>
+          <li><strong>Lakehouse stacks:</strong> the same layer wears medallion names - "bronze" is roughly raw-landed, "silver" is roughly staged. Session b9 connects the vocabularies.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: BUILDING STAGING ============ -->
+  <section class="section" id="building-staging">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers IBM M2 staging lab</span>
+      <h2>CREATE TABLE AS + CAST: the whole trick <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">A staging table is one statement: <code>CREATE TABLE stg_x AS SELECT ... FROM x</code>, with CASTs where the source lied about types. That is genuinely the whole trick - the craft is in doing it consistently for every table, every load.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Build stg_orders and prove the date is a date<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>In b1, <code>typeof(order_date)</code> exposed VARCHAR dates in the source. Fix it, then run the same proof against the staged copy:</p>
+        <div class="sqlbox" data-caption="CREATE TABLE AS materializes the query - then typeof() proves the fix took.">
+          <pre class="sql-src">CREATE TABLE stg_orders AS
+SELECT order_id, customer_id,
+       CAST(order_date AS DATE) AS order_date,
+       status, channel
+FROM orders;
+
+SELECT order_id, order_date,
+       typeof(order_date) AS stored_as
+FROM stg_orders
+LIMIT 4;</pre>
+        </div>
+        <p>VARCHAR became DATE. From here on, <code>strftime(order_date, '%Y-%m')</code>, date arithmetic, and calendar joins all just work - because staging paid the tax once.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Naming conventions + TRY_CAST for dirty data<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Two habits that make a staging layer readable by strangers:</p>
+        <ul>
+          <li><strong>The <code>stg_</code> prefix, one source table each:</strong> <code>orders</code> becomes <code>stg_orders</code>, nothing merged, nothing skipped. Anyone can trace any staged column back to exactly one source column.</li>
+          <li><strong>TRY_CAST when the source is dirty:</strong> CAST fails the whole load on one bad value; TRY_CAST turns the bad value into NULL and lets the load finish - then your null scan (Part 3) reports how many landed.</li>
+        </ul>
+        <div class="sqlbox" data-caption="Swap TRY_CAST for CAST on the 'oops' line and re-run - the whole script fails instead.">
+          <pre class="sql-src">SELECT CAST('2026-06-22' AS DATE)     AS clean_date,
+       TRY_CAST('oops' AS DATE)       AS junk_becomes_null,
+       TRY_CAST('2026-13-99' AS DATE) AS impossible_date;</pre>
+        </div>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Which one should you use?</strong> CAST when a bad value should stop the presses (a corrupt export you must not half-load). TRY_CAST when the show must go on and you will count the NULLs after. Teams that pick neither on purpose end up with 3am load failures on Black Friday.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: QUALITY GATES ============ -->
+  <section class="section" id="quality-gates">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers IBM "verify data quality" lab, 365DS quality &amp; governance</span>
+      <h2>Four quality gates at the dock <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">Staging is a loading dock, and a dock has inspectors. Four cheap checks catch the vast majority of load disasters: <strong>row counts reconcile</strong> against source, <strong>primary keys are unique</strong>, <strong>critical columns have no NULLs</strong>, and <strong>the data is fresh</strong>. Run them after every load, and a bad batch gets stopped at the door instead of discovered in the CEO's dashboard.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A raw load passes four quality gates before it is accepted into staging">
+        <style>
+          .qgH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .qgT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .qgG { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .qgC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .qgN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .qgArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#qgAh); }
+        </style>
+        <defs>
+          <marker id="qgAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="qgH" x="30" y="36">Tonight's load</text>
+        <rect x="30" y="52" width="180" height="30" rx="6" fill="#26435C"/>
+        <text class="qgT" x="42" y="72">orders · 33 rows</text>
+        <text class="qgC" x="30" y="104">raw, straight from</text>
+        <text class="qgC" x="30" y="122">the app database</text>
+
+        <path class="qgArr" d="M210,67 C240,67 250,67 268,67"/>
+
+        <text class="qgH" x="270" y="36">The four gates</text>
+        <rect x="270" y="52" width="330" height="34" rx="6" fill="#3E6B8F"/>
+        <text class="qgG" x="282" y="74">1 · row counts match the source (33 = 33)</text>
+        <rect x="270" y="94" width="330" height="34" rx="6" fill="#3E6B8F"/>
+        <text class="qgG" x="282" y="116">2 · primary key unique (no duplicate order_id)</text>
+        <rect x="270" y="136" width="330" height="34" rx="6" fill="#5E8CB0"/>
+        <text class="qgG" x="282" y="158">3 · no NULLs in critical columns (dates, keys)</text>
+        <rect x="270" y="178" width="330" height="34" rx="6" fill="#5E8CB0"/>
+        <text class="qgG" x="282" y="200">4 · fresh (newest row is recent enough)</text>
+
+        <path class="qgArr" d="M600,130 C640,130 650,130 668,130"/>
+
+        <text class="qgH" x="670" y="36">Accepted</text>
+        <rect x="670" y="52" width="180" height="30" rx="6" fill="#26435C"/>
+        <text class="qgT" x="682" y="72">stg_orders</text>
+        <rect x="670" y="90" width="180" height="26" rx="6" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="qgC" x="682" y="108">typed · trusted · gated</text>
+        <text class="qgC" x="670" y="140">the only version the</text>
+        <text class="qgC" x="670" y="158">core is allowed to read</text>
+
+        <rect x="30" y="240" width="820" height="1" fill="#E3EAF0"/>
+        <text class="qgC" x="30" y="266">A failed gate stops the load and pages a human. Ten minutes of inspection beats ten days of wrong numbers.</text>
+        <rect x="30" y="286" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="qgN" x="54" y="298">These four checks are the seed of a data contract - b2's Demo 2 makes you write one.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - four cheap checks between the source and everything you will ever trust</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Run all four gates in one script<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>This playground starts with the staging layer already built (<code>data-setup="staging"</code>), so you can play inspector. One script, four gates, one PASS/FAIL summary:</p>
+        <div class="sqlbox" data-setup="staging" data-caption="Break a gate on purpose: DELETE FROM stg_orders WHERE order_id = 1001; before the checks, then re-run.">
+          <pre class="sql-src">SELECT '1 row counts reconcile' AS gate,
+       CASE WHEN (SELECT count(*) FROM orders)
+               = (SELECT count(*) FROM stg_orders)
+            THEN 'PASS' ELSE 'FAIL' END AS result
+UNION ALL
+SELECT '2 order_id unique',
+       CASE WHEN (SELECT count(*) FROM stg_orders)
+               = (SELECT count(DISTINCT order_id) FROM stg_orders)
+            THEN 'PASS' ELSE 'FAIL' END
+UNION ALL
+SELECT '3 no NULL order dates',
+       CASE WHEN (SELECT count(*) FROM stg_orders
+                  WHERE order_date IS NULL) = 0
+            THEN 'PASS' ELSE 'FAIL' END
+UNION ALL
+SELECT '4 data is fresh',
+       CASE WHEN (SELECT max(order_date) FROM stg_orders)
+               >= DATE '2026-06-01'
+            THEN 'PASS' ELSE 'FAIL' END;</pre>
+        </div>
+        <p>Gate 1 catches lost or doubled batches. Gate 2 catches duplicate loads and broken joins-to-be. Gate 3 catches the NULLs that TRY_CAST quietly minted. Gate 4 catches the silent scheduler that stopped running last Tuesday.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Build Daybreak's staging layer in one script <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Time to pour the whole foundation. One script builds three staging tables - customers, orders, order items - with typed dates and the <code>line_amount</code> computed once, then reports the row count of each. This exact layer is what b3 will model into a star.</p>
+
+    <div class="steps">
+      <div class="step"><p>Read the script top to bottom first. Every table is the same move: CREATE TABLE AS, SELECT, CAST where the source lied.</p></div>
+      <div class="step"><p>Run it. The final SELECT reports each staged table with its row count - your gate-1 numbers.</p></div>
+      <div class="step"><p>Now check the counts against the source you know: 15 customers, 33 orders. If a number surprised you, staging just did its job.</p></div>
+      <div class="step"><p>Change one thing: add <code>WHERE status = 'completed'</code> to stg_orders and re-run. Then undo it - staging COPIES, it does not filter. Filtering is a modeling decision that belongs in the core, made in daylight.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="The whole staging build - every Run starts from a fresh source, so this script is your replayable load.">
+      <pre class="sql-src">CREATE TABLE stg_customers AS
+SELECT customer_id, name, city, country,
+       CAST(signup_date AS DATE) AS signup_date,
+       plan
+FROM customers;
+
+CREATE TABLE stg_orders AS
+SELECT order_id, customer_id,
+       CAST(order_date AS DATE) AS order_date,
+       status, channel
+FROM orders;
+
+CREATE TABLE stg_order_items AS
+SELECT order_id, product_id, quantity, unit_price,
+       quantity * unit_price AS line_amount
+FROM order_items;
+
+SELECT 'stg_customers' AS staged_table,
+       count(*) AS row_count FROM stg_customers
+UNION ALL
+SELECT 'stg_orders', count(*) FROM stg_orders
+UNION ALL
+SELECT 'stg_order_items', count(*) FROM stg_order_items;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This script IS the job.</strong> In a dbt project each CREATE TABLE AS above would be one <code>stg_*.sql</code> model file; the scheduler re-runs them every morning; the gates from Part 3 run as tests right after. Same SQL, bigger machine. Nothing about the idea changes at a billion rows.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Your turn: extend the layer, write a contract <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Same rules as always: write it, run it, read the error, fix it, run again. Q1 extends the staging layer; Q2 makes you think like a data contract; Q3 is the duplicate-catcher you will reuse forever.</p>
+
+    <div class="steps">
+      <div class="step"><p>Q1 and Q2 are live - try before peeking at the starter SQL. Q3 is your self-study pattern for the week.</p></div>
+      <div class="step"><p>Remember: every Run starts a fresh database, so each box must build whatever it needs.</p></div>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q1 · Stage subscriptions with typed dates<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Subscriptions carry TWO text dates, and <code>cancel_date</code> is NULL for active subscribers - CAST handles NULL just fine. Build <code>stg_subscriptions</code> and prove the types:</p>
+        <div class="sqlbox" data-caption="Hint: NULL survives a CAST untouched - only bad text fails.">
+          <pre class="sql-src">CREATE TABLE stg_subscriptions AS
+SELECT sub_id, customer_id, product_id,
+       CAST(start_date AS DATE)  AS start_date,
+       CAST(cancel_date AS DATE) AS cancel_date,
+       monthly_qty
+FROM subscriptions;
+
+SELECT sub_id, start_date,
+       typeof(start_date) AS stored_as,
+       cancel_date
+FROM stg_subscriptions
+ORDER BY sub_id;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Q2 · Contract check: any status outside the allowed set?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A data contract says: "orders.status is always one of completed, refunded, cancelled." Write the query that finds violations - an <strong>empty result means the contract holds</strong>, and that emptiness is the answer you want:</p>
+        <div class="sqlbox" data-caption="Zero rows = PASS. Add a fake status with an INSERT above the SELECT to watch it catch one.">
+          <pre class="sql-src">SELECT order_id, order_date, status
+FROM orders
+WHERE status NOT IN ('completed', 'refunded', 'cancelled');</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Q3 · The duplicate-check pattern<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>GROUP BY the key, HAVING count above one - the four-line pattern that catches double loads, bad merges, and fan-out joins for the rest of your career. Empty result = clean:</p>
+        <div class="sqlbox" data-caption="Reuse this on ANY table: swap the key column and the table name.">
+          <pre class="sql-src">SELECT order_id, count(*) AS copies
+FROM orders
+GROUP BY order_id
+HAVING count(*) > 1;</pre>
+        </div>
+        <p>Where it saves you: someone re-runs yesterday's load script by hand, every order now exists twice, and every revenue number silently doubles. Gate 2 plus this pattern is how you find out in minutes, not months.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Stage the last two source tables yourself: <code>stg_products</code> (no casts needed) and <code>stg_events</code> (one date to type). Use Demo 1's script as the template.</li>
+      <li>Write the four quality gates for <code>stg_order_items</code>. Careful: its natural key is order_id + product_id together, not one column - adjust gate 2.</li>
+      <li>Find one dataset at work that people query raw, and list the three staging fixes it needs most (a type, a rename, a gate). That list is a staging spec.</li>
+      <li>Say the four promises of staging out loud from memory: typed, renamed, quality-gated, replayable. If one escapes you, reread Part 1.</li>
+      <li>Bring your staged layer to b3 - the star schema builds directly on top of these exact tables.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session teaches the staging and quality material from the major curricula as one live build. Certificates, graded labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - Module 2: architectures &amp; staging areas</span><span class="note">Parts 1-2 + Demo 1 · lab twin: their staging exercise, on Daybreak</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals - Module 2: verify data quality</span><span class="note">Part 3 + Demo 2 · the four gates as one runnable script</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - Session 4: design, quality &amp; governance</span><span class="note">Parts 1 + 3 · layered architecture and quality thinking</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DeepLearning.AI Data Engineering C4 - transformation &amp; quality framing</span><span class="note">Parts 2-3 · contract thinking; full modeling depth lands in b3-b5</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Why build a staging layer instead of modeling straight on the raw source tables?</p>
+      <button class="qopt" type="button">A · Staging automatically makes every query faster</button>
+      <button class="qopt" type="button">B · It gives you a typed, renamed, quality-gated, replayable copy - so every later layer builds on trusted data instead of source quirks</button>
+      <button class="qopt" type="button">C · DuckDB requires a stg_ prefix before you can join tables</button>
+      <p class="qwhy">Staging is about trust, not speed. Types are fixed once, gates inspect every load, and the whole layer can be rebuilt from source by script - which is why the rule is "never model on raw".</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · What does TRY_CAST do that CAST does not?</p>
+      <button class="qopt" type="button">A · Nothing - they are two spellings of the same function</button>
+      <button class="qopt" type="button">B · TRY_CAST is faster because it skips validation</button>
+      <button class="qopt" type="button">C · On an unparseable value, TRY_CAST returns NULL and the load continues - CAST fails the whole statement</button>
+      <p class="qwhy">CAST is strict: one 'oops' in a million rows kills the load. TRY_CAST converts failures to NULL so the load lands - then your null-scan gate reports how many, and you decide what to do in daylight.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Someone re-runs the nightly load script by hand and every order lands in staging twice. Which gate lights up?</p>
+      <button class="qopt" type="button">A · Row-count reconciliation - staging now has 66 rows against 33 in the source</button>
+      <button class="qopt" type="button">B · The freshness check - the data is now too new</button>
+      <button class="qopt" type="button">C · No gate - duplicates are only a problem in the core layer</button>
+      <p class="qwhy">A double load doubles the count, so gate 1 fails immediately - and gate 2 (key uniqueness) fails right behind it, since every order_id now appears twice. Freshness only checks the newest date, which looks fine.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 2 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Three layers</b><span>Staging (typed copies) → core (star schema) → marts (team slices). Each layer reads only the one before it.</span></div>
+      <div class="cheat-item"><b>Never model on raw</b><span>Dashboards and models read staged tables, never source. Source quirks stop at the dock.</span></div>
+      <div class="cheat-item"><b>Staging's four promises</b><span>Typed, renamed, quality-gated, replayable. If a layer breaks one, it is not staging.</span></div>
+      <div class="cheat-item"><b>The build move</b><span>CREATE TABLE stg_x AS SELECT ... CAST(...) FROM x. One source table, one stg_ table.</span></div>
+      <div class="cheat-item"><b>CAST vs TRY_CAST</b><span>CAST fails the load on bad values; TRY_CAST turns them into NULL and lets the null scan count them.</span></div>
+      <div class="cheat-item"><b>Four quality gates</b><span>Row counts reconcile · keys unique · no NULLs in critical columns · data is fresh. Run after every load.</span></div>
+      <div class="cheat-item"><b>Duplicate pattern</b><span>GROUP BY key HAVING count(*) &gt; 1 - empty result means clean. Catches double loads in seconds.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b3 models these staged tables into a star schema - grain first, then facts and dimensions.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 2 of 10 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b1-row-store-column-store.html">← Prev: Row store meets column store</a> &nbsp;·&nbsp; <a href="b3-facts-dimensions.html">Next: Facts and dimensions →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/dw-seed.js?v=1"></script>
+<script src="../assets/warehouse-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

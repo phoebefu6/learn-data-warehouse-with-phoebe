@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 3 · The one-truth problem - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Leader session 3 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Leader track · Session 3 of 6</div>
+    <h1>The <span class="accent">one-truth</span> problem</h1>
+    <p class="sub">Monday's leadership meeting at Daybreak: marketing reports June revenue of 214k, finance reports 198k, and forty minutes of a six-figure hour vanish into "whose number is right". Here is the uncomfortable truth - both numbers are right. This session dissects how one source of data produces two correct, contradicting answers, and what a warehouse (plus one organizational handshake) does about it.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-20 · Why dashboards disagree</span>
+      <span class="a3" style="flex:5">20-42 · Conformed dims + the handshake</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are</h2>
+    </div>
+    <p class="lede">You know why warehouses exist (a1) and what the factory looks like inside (a2). But a warehouse alone does not stop dashboards from disagreeing - Daybreak has one now, and marketing and finance still brought two Junes to the same meeting. Today: the anatomy of metric drift, the two technical fixes every mature data team installs, and the governance handshake that makes the fixes stick. This is the session that pays for the whole track in saved meeting hours.</p>
+    <div class="legend">
+      <span class="pill solid">Live - discussed in session</span>
+      <span class="pill light">Self-study - read after</span>
+      <span class="pill peach">Boardroom moment - a story to retell</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The three ways two "right" numbers diverge (filters, joins, refresh times), two terms you can now use precisely - conformed dimensions and the metric layer - and a three-part handshake (owner, written definition, test) you can install by asking for it in one meeting.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: WHY DASHBOARDS DISAGREE ============ -->
+  <section class="section" id="why-disagree">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers 365DS Data quality &amp; governance, DLAI Data Engineering C4 M4 serving</span>
+      <h2>Why dashboards disagree <span class="tag concept">17 min live</span></h2>
+    </div>
+    <p class="lede">Nobody lied and nothing is broken - that is what makes this problem so expensive. Marketing's 214k and finance's 198k both came from the same orders table. They diverged in the query: one <strong>filter</strong> decision (refunds in or out), one <strong>join</strong> decision (which side tables), one <strong>timing</strong> decision (refreshed when). Three small, defensible choices, one very public 16k gap.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One orders table feeds two query paths with different filters, joins, and refresh times, producing two different revenue numbers">
+        <style>
+          .dv3H { font: 700 14px Inter, sans-serif; fill: #1C2833; }
+          .dv3T { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .dv3B { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .dv3C { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .dv3N { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .dv3Big { font: 700 20px Inter, sans-serif; fill: #26435C; }
+          .dv3Arr { stroke: #5E8CB0; stroke-width: 2; fill: none; marker-end: url(#dv3Ah); }
+        </style>
+        <defs>
+          <marker id="dv3Ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#5E8CB0"/>
+          </marker>
+        </defs>
+        <text class="dv3H" x="40" y="120">One source</text>
+        <rect x="40" y="134" width="170" height="64" rx="8" fill="#26435C"/>
+        <text class="dv3T" x="56" y="160">orders table</text>
+        <text class="dv3B" x="56" y="182">every June order</text>
+
+        <path class="dv3Arr" d="M210,152 C270,120 300,84 348,72"/>
+        <path class="dv3Arr" d="M210,182 C270,214 300,248 348,260"/>
+
+        <text class="dv3H" x="356" y="40">Marketing's query</text>
+        <rect x="356" y="52" width="290" height="88" rx="8" fill="#3E6B8F"/>
+        <text class="dv3B" x="372" y="78">filter: refunds INCLUDED</text>
+        <text class="dv3B" x="372" y="98">join: campaign table</text>
+        <text class="dv3B" x="372" y="118">refreshed: 6am daily</text>
+
+        <text class="dv3H" x="356" y="230">Finance's query</text>
+        <rect x="356" y="242" width="290" height="88" rx="8" fill="#5E8CB0"/>
+        <text class="dv3B" x="372" y="268">filter: refunds EXCLUDED</text>
+        <text class="dv3B" x="372" y="288">join: invoice table</text>
+        <text class="dv3B" x="372" y="308">refreshed: midnight</text>
+
+        <path class="dv3Arr" d="M646,96 C680,96 690,96 712,96"/>
+        <path class="dv3Arr" d="M646,286 C680,286 690,286 712,286"/>
+
+        <text class="dv3Big" x="720" y="102">"214k"</text>
+        <text class="dv3C" x="720" y="122">June revenue</text>
+        <text class="dv3Big" x="720" y="292">"198k"</text>
+        <text class="dv3C" x="720" y="312">June revenue</text>
+
+        <rect x="40" y="240" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="dv3N" x="64" y="252">Both are "right" - they answer</text>
+        <text class="dv3N" x="64" y="272">different questions wearing</text>
+        <text class="dv3N" x="64" y="292">the same name: revenue.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one table, two defensible query paths, one very expensive meeting</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The anatomy of metric drift<span class="mini">6 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Metric drift has exactly three parents, and once you can name them you can diagnose any two-numbers meeting in minutes instead of forty:</p>
+        <ul>
+          <li><strong>Filters:</strong> refunds in or out, test orders in or out, gift subscriptions in or out. Each team picks the filter that matches its job - marketing measures demand, finance measures money kept. Both defensible, never identical.</li>
+          <li><strong>Joins:</strong> which side tables the query pulls in. Joining orders to campaigns silently drops orders with no campaign; joining to invoices drops orders not yet invoiced. The number changes and nobody typed a wrong digit.</li>
+          <li><strong>Refresh times:</strong> a 6am dashboard and a midnight dashboard describe different Junes for a day or two every month-end. The gap closes itself later, after the argument already happened.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The diagnostic question</strong>
+          Never ask "whose number is right?" Ask "what did each query count?" The first question starts a turf war; the second ends one.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why the warehouse alone does not fix this<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Uncomfortable but important: Daybreak's two Junes were both computed <em>from the warehouse</em>. The warehouse guarantees both teams read the same clean, typed, historical data - that is real progress, in a1's world this argument would have been about data quality too. But the warehouse cannot stop two analysts from writing two different queries on top of it.</p>
+        <ul>
+          <li><strong>The warehouse solves "same data":</strong> one governed copy, one history, one set of checked inputs.</li>
+          <li><strong>It does not solve "same definition":</strong> that lives in the queries, and queries are written by people with different jobs.</li>
+          <li><strong>So the fix has two halves:</strong> a technical half (Part 2) that gives definitions one home, and a human half (Part 3) that gives each definition one owner.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Boardroom moment.</strong> Daybreak's CEO, mid-argument, asked the question that reframed everything: "Are these two numbers wrong, or are they two answers to two questions?" The room went quiet, someone said "the second one", and the meeting agenda changed from "audit the data team" to "decide what revenue means". That is this entire session in one sentence.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The month-end timing trap<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The refresh-time parent deserves its own note because it strikes on a schedule: the first two days of every month, when late-arriving orders, processing refunds, and different pipeline schedules make every dashboard slightly different - then quietly agree again by the 3rd.</p>
+        <ul>
+          <li><strong>Know your data's "settle time":</strong> ask your team how long after month-end the numbers stop moving. Most companies: 2-5 days.</li>
+          <li><strong>Timestamp the number, not just the month:</strong> "June revenue as of July 2" is a different fact from "June revenue as of July 10". Mature teams label dashboards with refresh time for exactly this reason.</li>
+          <li><strong>Cheap policy win:</strong> agree that board-pack numbers are cut on a fixed day. Half the drift disappears by calendar alone.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: THE FIXES ============ -->
+  <section class="section" id="the-fixes">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers DLAI C4 M4 serving for analytics, conformed dimensions (Kimball)</span>
+      <h2>The fixes, in exec terms <span class="tag concept">12 min live</span></h2>
+    </div>
+    <p class="lede">Mature data teams install two pieces of machinery on top of the warehouse so that agreement is the default, not an act of discipline. You do not need to build either one - you need to be able to ask "do we have this?" and understand the answer.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One shared customer dimension is joined by every fact table, so every team slices by the same nouns">
+        <style>
+          .cd3H { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .cd3I { font: 700 13px Inter, sans-serif; fill: #1C2833; }
+          .cd3B { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .cd3C { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .cd3N { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .cd3L { stroke: #A5C2D8; stroke-width: 2; fill: none; }
+        </style>
+        <line class="cd3L" x1="340" y1="120" x2="180" y2="70"/>
+        <line class="cd3L" x1="540" y1="120" x2="700" y2="70"/>
+        <line class="cd3L" x1="340" y1="175" x2="180" y2="230"/>
+        <line class="cd3L" x1="540" y1="175" x2="700" y2="230"/>
+
+        <rect x="340" y="105" width="200" height="86" rx="10" fill="#26435C"/>
+        <text class="cd3H" x="356" y="133">dim_customer</text>
+        <text class="cd3B" x="356" y="155">ONE shared noun:</text>
+        <text class="cd3B" x="356" y="175">who a customer is</text>
+
+        <rect x="40" y="30" width="180" height="56" rx="8" fill="#3E6B8F"/>
+        <text class="cd3B" x="54" y="54">fct_order_line</text>
+        <text class="cd3B" x="54" y="74">revenue events</text>
+
+        <rect x="660" y="30" width="180" height="56" rx="8" fill="#3E6B8F"/>
+        <text class="cd3B" x="674" y="54">fct_subscription</text>
+        <text class="cd3B" x="674" y="74">plan changes</text>
+
+        <rect x="40" y="212" width="180" height="56" rx="8" fill="#3E6B8F"/>
+        <text class="cd3B" x="54" y="236">fct_ticket</text>
+        <text class="cd3B" x="54" y="256">support events</text>
+
+        <rect x="660" y="212" width="180" height="56" rx="8" fill="#3E6B8F"/>
+        <text class="cd3B" x="674" y="236">fct_web_event</text>
+        <text class="cd3B" x="674" y="256">site behavior</text>
+
+        <text class="cd3C" x="340" y="222">every fact joins the SAME customer -</text>
+        <text class="cd3C" x="340" y="240">so "by city" and "by plan" mean one</text>
+        <text class="cd3C" x="340" y="258">thing on every dashboard, every team</text>
+
+        <rect x="40" y="298" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="cd3N" x="64" y="310">Conformed dimension = one shared noun. Numbers can only reconcile if the nouns already do.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - four fact tables, one shared customer dimension: the hub that makes numbers reconcilable</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Fix 1 · Conformed dimensions: share the nouns<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Recall a2: dimensions are the nouns - customer, product, date. A <strong>conformed</strong> dimension is a noun built once and shared by every fact table in the warehouse. One customer dimension, joined by revenue facts, subscription facts, and support facts alike.</p>
+        <ul>
+          <li><strong>Why it kills drift:</strong> half of metric arguments are secretly noun arguments - two teams with two customer lists, two region groupings, two fiscal calendars. Conform the noun and that class of argument goes extinct.</li>
+          <li><strong>What it costs:</strong> agreeing on the shared noun takes real meetings - whose region grouping wins, whose customer status names. Pay once, or pay monthly in disputes.</li>
+          <li><strong>What to ask your team:</strong> "Is there one customer dimension, or does each mart have its own?" One is health; several is a1's frozen checkout waiting to happen, but for trust.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Fix 2 · The metric layer: define revenue once<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Conformed dimensions share the nouns; the <strong>metric layer</strong> (your team may say "semantic layer") shares the verbs-with-numbers. "Revenue" gets defined exactly once - refunds out, test orders out, cut at midnight UTC - in one governed place, and every dashboard <em>reuses</em> that definition instead of re-deriving it.</p>
+        <ul>
+          <li><strong>The shift that matters:</strong> analysts stop writing "their version of revenue" and start requesting "the revenue metric". Divergence stops being possible by accident - it now requires deliberately going around the layer.</li>
+          <li><strong>Tested definitions:</strong> good teams attach automated checks - revenue is never negative, June's total matches finance's ledger within tolerance. Definitions with tests age well; definitions in a wiki page do not.</li>
+          <li><strong>What to ask your team:</strong> "If I change what counts as revenue, how many places must be edited?" The dream answer is one. Every number above one is a future two-Junes meeting.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>How the pieces stack<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The full trust stack, bottom to top - each layer assumes the one below:</p>
+        <ul>
+          <li><strong>Warehouse (a1-a2):</strong> everyone reads the same clean, historical data.</li>
+          <li><strong>Conformed dimensions:</strong> everyone slices by the same nouns.</li>
+          <li><strong>Metric layer:</strong> everyone computes the same verbs, from one tested definition.</li>
+          <li><strong>Governance handshake (Part 3):</strong> a human owns each definition, so the stack survives reorgs, new hires, and strong opinions.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: THE HANDSHAKE ============ -->
+  <section class="section" id="the-handshake">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the governance handshake</span>
+      <h2>Owner, definition, test <span class="tag concept">10 min live</span></h2>
+    </div>
+    <p class="lede">The technology of Part 2 holds only if a human arrangement backs it. The arrangement is small enough to fit on an index card: every metric that reaches a leadership meeting has <strong>an owner, a written definition, and a test</strong>. Install those three and the metric wars end; skip any one and they return within two quarters.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The three-part handshake<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>For each board-level metric:</p>
+        <ul>
+          <li><strong>An owner - a name, not a team.</strong> The person who decides what "revenue" means when marketing and finance want different things. Usually a business leader, advised by data. "The data team owns it" means nobody does.</li>
+          <li><strong>A written definition - filters, joins, timing included.</strong> "Revenue = completed orders minus refunds, excluding test accounts, cut at midnight UTC." One paragraph, versioned, findable. If it changed, you can see when and why.</li>
+          <li><strong>A test - a check that runs without a human.</strong> The definition is encoded once in the metric layer and monitored: totals reconcile to the ledger, the number never goes negative, yesterday loaded. Trust that renews itself nightly.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Where this lives organizationally</strong>
+          Small companies: a shared metrics doc plus one accountable name per metric - installable this week. Larger ones: a data-governance function with stewards and a catalog. Same handshake, more scaffolding. For the full organizational picture, Phoebe's <a href="https://phoebefu6.github.io/learn-data-governance-with-phoebe/">learn-data-governance-with-phoebe</a> course goes deep.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The meeting that ended Daybreak's metric wars<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>What Daybreak actually did after the two-Junes meeting - one 60-minute session, reusable as a template:</p>
+        <ul>
+          <li><strong>Minute 0-10:</strong> listed every metric that had appeared in a leadership deck that quarter. Eleven metrics. Nobody expected it to be that few.</li>
+          <li><strong>Minute 10-40:</strong> for each, asked Part 1's diagnostic - "what does each version count?" - and made the business call on the spot. Revenue: refunds out, gross demand became its own separately named metric so marketing lost nothing.</li>
+          <li><strong>Minute 40-60:</strong> assigned one owner per metric and gave the data team a fortnight to encode each definition once, with tests.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Boardroom moment.</strong> The quiet masterstroke was renaming, not deleting. Marketing's refunds-in number survived as "gross demand" - a different name for a different question. Most metric wars are two teams fighting over one word when the real fix is agreeing there are two words. Steal that move.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Your metric audit, in 15 minutes<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Run Daybreak's meeting solo, as a diagnostic on your own company:</p>
+        <ul>
+          <li><strong>List</strong> the metrics in your last board pack. Expect 8-15.</li>
+          <li><strong>Score each 0-3:</strong> one point each for named owner, written definition, automated test.</li>
+          <li><strong>Read the scores:</strong> 3 = sleep well. 2 = fine until a reorg. 0-1 on a metric you present = you are one filter choice away from your own two-Junes meeting.</li>
+          <li><strong>The follow-up that costs nothing:</strong> forward the lowest scorer to your data lead with one line - "who owns this?"</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before next session <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Run the 15-minute metric audit from Part 3's self-study card on your last board pack. Bring the worst score to a4.</li>
+      <li>Next time two numbers disagree in a meeting, deploy the diagnostic question - "what did each query count?" - and note how much faster the room converges.</li>
+      <li>Ask your data lead: "Do we have one customer dimension or several?" and "If revenue's definition changed, how many places would we edit?" Two questions, full health check.</li>
+      <li>Find your most-argued metric's definition in writing. Time how long it takes. Over ten minutes of searching is itself the finding.</li>
+      <li>Identify one metric pair that should be two named metrics instead of one contested word (Daybreak's revenue vs gross demand). Propose the rename to the owner - or become the owner.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session distills the quality, governance, and serving chapters of the major curricula into the boardroom view. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - Data quality &amp; governance</span><span class="note">Parts 1 + 3 · drift anatomy and the ownership handshake</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DeepLearning.AI Data Engineering C4 (Joe Reis) - M4: serving data for analytics</span><span class="note">Parts 1-2 · serving consistent numbers; the metric/semantic layer</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - data quality verification</span><span class="note">Part 2 · tested definitions in exec terms; the hands-on quality lab lives in builder b2</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Marketing says June was 214k, finance says 198k, same warehouse underneath. The most likely cause is...</p>
+      <button class="qopt" type="button">A · Someone made a data-entry error that must be found</button>
+      <button class="qopt" type="button">B · Different defensible query choices - filters, joins, or refresh times - answering different questions with the same name</button>
+      <button class="qopt" type="button">C · The warehouse loaded June twice</button>
+      <p class="qwhy">Metric drift has three parents: filters (refunds in/out), joins (which side tables), and timing (refreshed when). Both numbers are usually "right" - the diagnostic question is "what did each query count?"</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · A conformed dimension is...</p>
+      <button class="qopt" type="button">A · One shared noun - like a single customer dimension - joined by every fact table, so all teams slice by the same thing</button>
+      <button class="qopt" type="button">B · A dimension that has passed a compliance review</button>
+      <button class="qopt" type="button">C · A backup copy of a dimension kept for auditors</button>
+      <p class="qwhy">Numbers can only reconcile if the nouns already do. One customer dimension shared across revenue, subscription, and support facts means "by city" and "by plan" mean one thing everywhere.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">3 · The governance handshake that keeps definitions from drifting back is...</p>
+      <button class="qopt" type="button">A · A quarterly all-hands reminder to be careful with numbers</button>
+      <button class="qopt" type="button">B · Making the data team approve every dashboard</button>
+      <button class="qopt" type="button">C · Every board-level metric gets an owner (a name), a written definition, and an automated test</button>
+      <p class="qwhy">Owner decides when teams disagree, the written definition captures filters/joins/timing, and the test renews trust nightly without a human. Skip any one and the metric wars return.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 3 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Drift's three parents</b><span>Filters (refunds in/out) · joins (which side tables) · refresh times. Every two-numbers meeting is one of these.</span></div>
+      <div class="cheat-item"><b>The diagnostic question</b><span>Never "whose number is right?" Always "what did each query count?" Ends turf wars in minutes.</span></div>
+      <div class="cheat-item"><b>Warehouse's limit</b><span>It guarantees same data, not same definition. Definitions live in queries - and in Part 2's machinery.</span></div>
+      <div class="cheat-item"><b>Conformed dimension</b><span>One shared noun (one customer dim) joined by every fact. Nouns reconcile first, then numbers can.</span></div>
+      <div class="cheat-item"><b>Metric layer</b><span>Revenue defined ONCE, tested, reused by every dashboard. Ask: "change it - how many edits?" Dream: one.</span></div>
+      <div class="cheat-item"><b>The handshake</b><span>Owner (a name) + written definition (filters, joins, timing) + automated test. All three or it unravels.</span></div>
+      <div class="cheat-item"><b>The rename move</b><span>Most metric wars end by agreeing there are two metrics: revenue AND gross demand. Different names, no loser.</span></div>
+      <div class="cheat-item"><b>Month-end trap</b><span>Numbers move for 2-5 days after month-end. Fix by calendar: cut board numbers on an agreed day.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 3 of 6 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a2-shape-of-a-warehouse.html">← Previous: The shape of a warehouse</a> &nbsp;·&nbsp; <a href="a4-buy-landscape.html">Next: The buy landscape →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

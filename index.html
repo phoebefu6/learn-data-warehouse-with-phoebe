@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>learn data warehouse with phoebe - a two-track course you run in your browser</title>
+<link rel="stylesheet" href="assets/style.css?v=1">
+<style>
+  .stats-row { display: flex; gap: 2.4rem; margin-top: 1.5rem; flex-wrap: wrap; }
+  .stat b { display: block; font-size: 2.1rem; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .72rem; opacity: .85; text-transform: uppercase; letter-spacing: .09em; font-weight: 600; }
+
+  .course-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .course-card {
+    border: 1px solid var(--hairline);
+    border-top: 4px solid var(--diff, var(--indigo));
+    border-radius: var(--radius);
+    padding: 1.2rem 1.3rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    text-decoration: none;
+    color: var(--ink);
+    background: #fff;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+    position: relative;
+  }
+  .course-card:hover { border-color: var(--indigo-soft); border-top-color: var(--diff, var(--indigo)); box-shadow: 0 8px 28px rgba(62,107,143,.14); transform: translateY(-3px); }
+  .course-card .cicon { font-size: 1.7rem; line-height: 1; }
+  .course-card .cnum { font-size: .72rem; font-weight: 700; color: var(--indigo); text-transform: uppercase; letter-spacing: .1em; }
+  .course-card h3 { font-size: 1.05rem; font-weight: 800; line-height: 1.3; }
+  .course-card p { font-size: .85rem; color: var(--muted); flex: 1; }
+  .course-card .meta { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+  .diff-legend { display: flex; gap: 1rem; margin-top: 1.6rem; font-size: .74rem; color: var(--muted); font-weight: 600; flex-wrap: wrap; }
+  .diff-legend i { display: inline-block; width: .85rem; height: .35rem; border-radius: 999px; margin-right: .35rem; vertical-align: middle; }
+
+  .prereq-line { margin-top: 1.4rem; font-size: .85rem; color: var(--muted); border-left: 3px solid var(--amber); padding: .5rem .9rem; background: var(--indigo-50); border-radius: 0 var(--radius) var(--radius) 0; }
+  .prereq-line a { color: var(--indigo); font-weight: 700; }
+  .sources-line { margin-top: .8rem; font-size: .8rem; color: var(--muted); }
+
+  .paths { margin-top: 2.6rem; }
+  .paths h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .3rem; }
+  .paths .plede { color: var(--muted); font-size: .92rem; margin-bottom: .8rem; }
+  .path { display: flex; gap: .55rem; align-items: center; padding: .75rem 0; border-bottom: .5px solid var(--hairline); flex-wrap: wrap; }
+  .path:last-child { border-bottom: none; }
+  .path b { min-width: 15.5rem; font-size: .9rem; }
+  .path .pstep { background: var(--indigo-50); color: var(--indigo); border-radius: 999px; padding: .16rem .68rem; font-weight: 700; font-size: .8rem; text-decoration: none; transition: all .12s ease; }
+  .path .pstep:hover { background: var(--indigo); color: #fff; }
+  .path .parr { color: var(--faint); font-weight: 700; }
+
+  .mm-section { margin-top: 1.6rem; }
+  .mm-section h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .2rem; }
+  .mm-section .mm-lede { color: var(--muted); font-size: .92rem; margin-bottom: .4rem; }
+  .mm-wrap { border: 1px solid var(--hairline); border-radius: var(--radius); background: linear-gradient(180deg,#fff,#EDF3F8); padding: .6rem; overflow-x: auto; }
+  .mm-svg { width: 100%; height: auto; display: block; max-width: 60rem; margin: 0 auto; min-width: 34rem; }
+  .mm-link { cursor: pointer; text-decoration: none; }
+  .mm-node rect { transition: opacity .15s ease, filter .15s ease; }
+  .mm-node text { pointer-events: none; }
+  .mm-link:hover .mm-node rect { filter: brightness(1.06); }
+  .mm-edge { transition: opacity .15s ease; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe</div>
+    <h1>Two tracks from dashboard pain to a working warehouse</h1>
+    <p class="sub">A leader track that teaches you why warehouses exist, what they cost, and how to judge the buy landscape without writing a line of SQL - and a builder track that constructs Daybreak's first real warehouse: staging, star schema, slowly changing dimensions, loading patterns, marts, and the lakehouse. Every builder page runs DuckDB - a real columnar OLAP engine - live in your browser, with editable SQL over 300,000 rows. No install, no cloud account, no bill.</p>
+    <div class="stats-row">
+      <div class="stat"><b data-count="16">16</b><span>sessions</span></div>
+      <div class="stat"><b data-count="2">2</b><span>tracks</span></div>
+      <div class="stat"><b data-count="10">10</b><span>live-playground sessions</span></div>
+      <div class="stat"><b data-count="300000">300,000</b><span>rows in your browser</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section">
+    <div class="paths" style="margin-top:0">
+      <h2>The leader track 🤝 <span style="font-size:.85rem;font-weight:600;color:var(--muted)">· for C-level, managers &amp; curious minds · 6 x 45 min · no code to write</span></h2>
+      <p class="plede">Thinking mode: why a warehouse is a copy on purpose, what "one truth" really costs, how to read the vendor landscape, why bills explode, and what the AI era changes - each session ends with questions to ask your data team.</p>
+    </div>
+    <div class="course-grid">
+      <a class="course-card" href="courses/a1-why-a-warehouse.html" style="--diff:#34D399">
+        <span class="cicon">🏭</span>
+        <span class="cnum">Leader 1 · easy</span>
+        <h3>Why a warehouse</h3>
+        <p>OLTP vs OLAP in plain business terms, and the copy idea: a warehouse is your data duplicated on purpose, restructured for big questions.</p>
+        <span class="meta"><span class="pill amber">▶ Leaders start here</span></span>
+      </a>
+      <a class="course-card" href="courses/a2-shape-of-a-warehouse.html" style="--diff:#34D399">
+        <span class="cicon">⭐</span>
+        <span class="cnum">Leader 2 · easy</span>
+        <h3>The shape of a warehouse</h3>
+        <p>The three layers every warehouse has, and the star schema - why facts and dimensions are the floor plan behind every dashboard.</p>
+        <span class="meta"><span class="pill light">Read-the-diagram session</span></span>
+      </a>
+      <a class="course-card" href="courses/a3-one-truth-problem.html" style="--diff:#FBBF24">
+        <span class="cicon">⚖️</span>
+        <span class="cnum">Leader 3 · medium</span>
+        <h3>The one-truth problem</h3>
+        <p>Why two honest teams report two different revenues: metric drift, conformed dimensions, and what "single source of truth" actually takes.</p>
+        <span class="meta"><span class="pill light">Spot-the-drift exercise</span></span>
+      </a>
+      <a class="course-card" href="courses/a4-buy-landscape.html" style="--diff:#FBBF24">
+        <span class="cicon">🛒</span>
+        <span class="cnum">Leader 4 · medium</span>
+        <h3>The buy landscape</h3>
+        <p>Warehouse vs lake vs lakehouse, and the engine landscape - Snowflake, BigQuery, Redshift, Databricks - as decisions, not logos.</p>
+        <span class="meta"><span class="pill light">Vendor-map exercise</span></span>
+      </a>
+      <a class="course-card" href="courses/a5-cost-and-performance.html" style="--diff:#FBBF24">
+        <span class="cicon">💸</span>
+        <span class="cnum">Leader 5 · medium</span>
+        <h3>Cost and performance</h3>
+        <p>Why warehouse bills explode, the four levers that control them, and the questions that keep your team honest about spend.</p>
+        <span class="meta"><span class="pill light">Bill-autopsy exercise</span></span>
+      </a>
+      <a class="course-card" href="courses/a6-warehouse-in-ai-era.html" style="--diff:#FBBF24">
+        <span class="cicon">🤖</span>
+        <span class="cnum">Leader 6 · medium</span>
+        <h3>The warehouse in the AI era</h3>
+        <p>Serving ML and AI from the warehouse, why governed data is the AI moat, and a crawl-walk-run plan you can actually fund.</p>
+        <span class="meta"><span class="pill light">What-to-invest exercise</span></span>
+      </a>
+    </div>
+
+    <div class="paths">
+      <h2>The builder track 🛠️ <span style="font-size:.85rem;font-weight:600;color:var(--muted)">· for practitioners · 10 sessions x 45 min (b10: 60) · live DuckDB in your browser</span></h2>
+      <p class="plede">One running project: Daybreak - the coffee-subscription brand from learn-sql-with-phoebe, grown up. Its OLTP database plays the source system, and session by session you build its first warehouse: staging, star schema, SCD merges, loading patterns, marts, Parquet round trips. Every page runs real DuckDB via WebAssembly - editable SQL over 300,000 rows. The engine loads once from a CDN (about 8 MB, the one network dependency); everything after that is offline.</p>
+    </div>
+    <div class="course-grid">
+      <a class="course-card" href="courses/b1-row-store-column-store.html" style="--diff:#34D399">
+        <span class="cicon">📦</span>
+        <span class="cnum">Builder 1 · easy</span>
+        <h3>Row store meets column store</h3>
+        <p>Feel the difference, not read about it: columnar storage vs the row-by-row app database, with DuckDB live on 300k rows.</p>
+        <span class="meta"><span class="pill amber">▶ Builders start here</span></span>
+      </a>
+      <a class="course-card" href="courses/b2-architecture-staging.html" style="--diff:#FBBF24">
+        <span class="cicon">🏗️</span>
+        <span class="cnum">Builder 2 · medium</span>
+        <h3>Architecture and the staging layer</h3>
+        <p>The layered warehouse, and staging as the airlock: land Daybreak's raw tables, type the text dates, and add quality gates.</p>
+        <span class="meta"><span class="pill light">Build the airlock</span></span>
+      </a>
+      <a class="course-card" href="courses/b3-facts-dimensions.html" style="--diff:#FBBF24">
+        <span class="cicon">📐</span>
+        <span class="cnum">Builder 3 · medium</span>
+        <h3>Facts and dimensions</h3>
+        <p>Declare the grain, split measures from context, and sketch Daybreak's star schema - the modeling move everything else hangs on.</p>
+        <span class="meta"><span class="pill light">Declare the grain</span></span>
+      </a>
+      <a class="course-card" href="courses/b4-building-dimensions.html" style="--diff:#FBBF24">
+        <span class="cicon">🔑</span>
+        <span class="cnum">Builder 4 · medium</span>
+        <h3>Building dimensions</h3>
+        <p>Surrogate keys, a generated dim_date, and clean conformed dimensions - built and queried live against the staged tables.</p>
+        <span class="meta"><span class="pill light">Mint the keys</span></span>
+      </a>
+      <a class="course-card" href="courses/b5-scd-in-practice.html" style="--diff:#FB923C">
+        <span class="cicon">🕰️</span>
+        <span class="cnum">Builder 5 · hands-on</span>
+        <h3>Slowly changing dimensions</h3>
+        <p>SCD Type 2 for real: customers move city, plans change price - track history and answer point-in-time questions correctly.</p>
+        <span class="meta"><span class="pill light">Time-travel joins</span></span>
+      </a>
+      <a class="course-card" href="courses/b6-loading-patterns.html" style="--diff:#FB923C">
+        <span class="cicon">🔁</span>
+        <span class="cnum">Builder 6 · hands-on</span>
+        <h3>Loading patterns</h3>
+        <p>ELT, full vs incremental loads, and the idempotent MERGE - run the same load twice and prove nothing breaks.</p>
+        <span class="meta"><span class="pill light">Run it twice</span></span>
+      </a>
+      <a class="course-card" href="courses/b7-marts-serving.html" style="--diff:#FB923C">
+        <span class="cicon">🏪</span>
+        <span class="cnum">Builder 7 · hands-on</span>
+        <h3>Marts and serving</h3>
+        <p>Ship the warehouse to the business: department marts, views and rollups, and the finance-vs-marketing revenue question settled.</p>
+        <span class="meta"><span class="pill light">Serve the business</span></span>
+      </a>
+      <a class="course-card" href="courses/b8-performance-cost.html" style="--diff:#FB923C">
+        <span class="cicon">⚡</span>
+        <span class="cnum">Builder 8 · hands-on</span>
+        <h3>Performance and cost</h3>
+        <p>Partition pruning, sort orders, and the cost levers - measure real scan savings live, then map them to cloud pricing.</p>
+        <span class="meta"><span class="pill light">Prune the scan</span></span>
+      </a>
+      <a class="course-card" href="courses/b9-lakehouse-modern-stack.html" style="--diff:#F87171">
+        <span class="cicon">🧊</span>
+        <span class="cnum">Builder 9 · hardest</span>
+        <h3>Lakehouse and the modern stack</h3>
+        <p>Parquet round trips live in the browser, table formats, One Big Table vs vault vs star - where the field is heading and why.</p>
+        <span class="meta"><span class="pill light">Parquet round trip</span></span>
+      </a>
+      <a class="course-card" href="courses/b10-capstone.html" style="--diff:#F87171">
+        <span class="cicon">🏁</span>
+        <span class="cnum">Builder 10 · hardest · 60 min</span>
+        <h3>Capstone: the whole warehouse</h3>
+        <p>Assemble the full pipeline end to end - raw to staging to star to marts - and close with a board pack built on your own warehouse.</p>
+        <span class="meta"><span class="pill light">End-to-end build</span></span>
+      </a>
+    </div>
+    <div class="diff-legend">
+      <span><i style="background:#34D399"></i>easy - everyone</span>
+      <span><i style="background:#FBBF24"></i>medium</span>
+      <span><i style="background:#FB923C"></i>hands-on</span>
+      <span><i style="background:#F87171"></i>hardest</span>
+    </div>
+
+    <p class="prereq-line">Best after <a href="https://phoebefu6.github.io/learn-sql-with-phoebe/">learn-sql-with-phoebe</a> - the Daybreak database comes from there. For schema-design depth see <a href="https://phoebefu6.github.io/learn-data-modeling-with-phoebe/">learn-data-modeling</a>; for pipelines see <a href="https://phoebefu6.github.io/learn-data-engineering-with-phoebe/">learn-data-engineering</a>.</p>
+    <p class="sources-line">Built from IBM Data Warehouse Fundamentals, DeepLearning.AI Data Engineering (Joe Reis), 365 Data Science Intro to Data Warehousing, and vendor deep dives - certificates stay official.</p>
+
+    <div class="paths">
+      <h2>Choose your path 🗺️</h2>
+      <p class="plede">Two doors, one warehouse. Leaders never write SQL; builders never sit through theory they have not just run themselves.</p>
+      <div class="path"><b>🤝 The leader path (judge &amp; fund)</b>
+        <a class="pstep" href="courses/a1-why-a-warehouse.html">a1</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a2-shape-of-a-warehouse.html">a2</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a3-one-truth-problem.html">a3</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a4-buy-landscape.html">a4</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a5-cost-and-performance.html">a5</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a6-warehouse-in-ai-era.html">a6</a>
+      </div>
+      <div class="path"><b>🛠️ The builder path (build Daybreak's)</b>
+        <a class="pstep" href="courses/b1-row-store-column-store.html">b1</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b2-architecture-staging.html">b2</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b3-facts-dimensions.html">b3</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b4-building-dimensions.html">b4</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b5-scd-in-practice.html">b5</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b6-loading-patterns.html">b6</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b7-marts-serving.html">b7</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b8-performance-cost.html">b8</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b9-lakehouse-modern-stack.html">b9</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b10-capstone.html">b10</a>
+      </div>
+      <div class="path"><b>🚀 The full journey (lead AND build)</b>
+        <a class="pstep" href="courses/a1-why-a-warehouse.html">a1-a6</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b1-row-store-column-store.html">b1-b10</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section mm-section">
+    <h2>The knowledge map 🧠</h2>
+    <p class="mm-lede">Both tracks at a glance - hover a session to spotlight its concepts, click any node to jump in.</p>
+    <div class="mm-wrap"><div id="mindmap"></div></div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a> · built from IBM DW Fundamentals, DeepLearning.AI Data Engineering &amp; 365 Data Science · runs on DuckDB-WASM</span>
+  </footer>
+</main>
+
+<script>
+window.MINDMAP_DATA = {
+  title: "Data\nWarehouse",
+  centerColor: "#26435C",
+  sessions: [
+    { label: "Why a\nwarehouse", href: "courses/a1-why-a-warehouse.html", color: "#34D399",
+      concepts: [
+        { label: "OLTP vs OLAP", href: "courses/a1-why-a-warehouse.html" },
+        { label: "The copy idea", href: "courses/a1-why-a-warehouse.html" } ] },
+    { label: "Shape of a\nwarehouse", href: "courses/a2-shape-of-a-warehouse.html", color: "#34D399",
+      concepts: [
+        { label: "Three layers", href: "courses/a2-shape-of-a-warehouse.html" },
+        { label: "Star schema", href: "courses/a2-shape-of-a-warehouse.html" } ] },
+    { label: "One-truth\nproblem", href: "courses/a3-one-truth-problem.html", color: "#FBBF24",
+      concepts: [
+        { label: "Metric drift", href: "courses/a3-one-truth-problem.html" },
+        { label: "Conformed dims", href: "courses/a3-one-truth-problem.html" } ] },
+    { label: "The buy\nlandscape", href: "courses/a4-buy-landscape.html", color: "#FBBF24",
+      concepts: [
+        { label: "Lake vs lakehouse", href: "courses/a4-buy-landscape.html" },
+        { label: "Engine landscape", href: "courses/a4-buy-landscape.html" } ] },
+    { label: "Cost &\nperformance", href: "courses/a5-cost-and-performance.html", color: "#FBBF24",
+      concepts: [
+        { label: "Why bills explode", href: "courses/a5-cost-and-performance.html" },
+        { label: "Four levers", href: "courses/a5-cost-and-performance.html" } ] },
+    { label: "Warehouse in\nthe AI era", href: "courses/a6-warehouse-in-ai-era.html", color: "#FBBF24",
+      concepts: [
+        { label: "Serving ML + AI", href: "courses/a6-warehouse-in-ai-era.html" },
+        { label: "Crawl walk run", href: "courses/a6-warehouse-in-ai-era.html" } ] },
+    { label: "Row store,\ncolumn store", href: "courses/b1-row-store-column-store.html", color: "#34D399",
+      concepts: [
+        { label: "Columnar storage", href: "courses/b1-row-store-column-store.html" },
+        { label: "DuckDB live", href: "courses/b1-row-store-column-store.html" } ] },
+    { label: "Architecture\n& staging", href: "courses/b2-architecture-staging.html", color: "#FBBF24",
+      concepts: [
+        { label: "Staging layer", href: "courses/b2-architecture-staging.html" },
+        { label: "Quality gates", href: "courses/b2-architecture-staging.html" } ] },
+    { label: "Facts &\ndimensions", href: "courses/b3-facts-dimensions.html", color: "#FBBF24",
+      concepts: [
+        { label: "Grain", href: "courses/b3-facts-dimensions.html" },
+        { label: "Facts + dims", href: "courses/b3-facts-dimensions.html" } ] },
+    { label: "Building\ndimensions", href: "courses/b4-building-dimensions.html", color: "#FBBF24",
+      concepts: [
+        { label: "Surrogate keys", href: "courses/b4-building-dimensions.html" },
+        { label: "dim_date", href: "courses/b4-building-dimensions.html" } ] },
+    { label: "Slowly changing\ndimensions", href: "courses/b5-scd-in-practice.html", color: "#FB923C",
+      concepts: [
+        { label: "SCD Type 2", href: "courses/b5-scd-in-practice.html" },
+        { label: "Point-in-time", href: "courses/b5-scd-in-practice.html" } ] },
+    { label: "Loading\npatterns", href: "courses/b6-loading-patterns.html", color: "#FB923C",
+      concepts: [
+        { label: "ELT + incremental", href: "courses/b6-loading-patterns.html" },
+        { label: "Idempotent MERGE", href: "courses/b6-loading-patterns.html" } ] },
+    { label: "Marts &\nserving", href: "courses/b7-marts-serving.html", color: "#FB923C",
+      concepts: [
+        { label: "Marts", href: "courses/b7-marts-serving.html" },
+        { label: "Views + rollups", href: "courses/b7-marts-serving.html" } ] },
+    { label: "Performance\n& cost", href: "courses/b8-performance-cost.html", color: "#FB923C",
+      concepts: [
+        { label: "Pruning", href: "courses/b8-performance-cost.html" },
+        { label: "Cost levers", href: "courses/b8-performance-cost.html" } ] },
+    { label: "Lakehouse &\nmodern stack", href: "courses/b9-lakehouse-modern-stack.html", color: "#F87171",
+      concepts: [
+        { label: "Parquet live", href: "courses/b9-lakehouse-modern-stack.html" },
+        { label: "OBT + vault", href: "courses/b9-lakehouse-modern-stack.html" } ] },
+    { label: "Capstone:\nwhole warehouse", href: "courses/b10-capstone.html", color: "#F87171",
+      concepts: [
+        { label: "Full pipeline", href: "courses/b10-capstone.html" },
+        { label: "Board pack", href: "courses/b10-capstone.html" } ] }
+  ]
+};
+</script>
+<script src="assets/mindmap.js?v=1"></script>
+<script src="assets/app.js?v=1"></script>
+</body>
+</html>

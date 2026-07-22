@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 2 · The shape of a warehouse - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Leader session 2 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Leader track · Session 2 of 6</div>
+    <h1>The <span class="accent">shape</span> of a warehouse</h1>
+    <p class="sub">Last session you learned why Daybreak needs a warehouse. Today you learn what one looks like inside - because "it is a big database in the cloud" is not a picture you can question. Good news: every warehouse on earth has the same anatomy, and it maps perfectly onto something you already understand - a factory. Walk one order through the building and you own the mental model for good.</p>
+    <div class="chip-row">
+      <span class="chip level">🔵 Leader track</span>
+      <span class="chip audience">Leaders: CxO · VPs · managers</span>
+      <span class="chip audience">No code - thinking mode</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-20 · Three layers</span>
+      <span class="a3" style="flex:5">20-42 · Star schema + who does what</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are</h2>
+    </div>
+    <p class="lede">Session a1 established the why: analytics and app traffic want opposite machines, so we build a governed copy. Today is the what: the copy is not one big pile - it is <strong>three deliberate layers</strong>, and inside the middle layer the data is arranged in a shape with a lovely name, the <strong>star schema</strong>. By the end you will be able to look at any warehouse architecture slide a vendor or your own team shows you and know exactly which box is which - and which questions to aim where.</p>
+    <div class="legend">
+      <span class="pill solid">Live - discussed in session</span>
+      <span class="pill light">Self-study - read after</span>
+      <span class="pill peach">Boardroom moment - a story to retell</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The three-layer factory picture (receiving dock, assembly floor, shipping dock), a plain-English grip on facts and dimensions - the two words your data team says most - and a clean answer to the question every executive eventually asks: "why are we keeping three copies of the same data?"
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THREE LAYERS ============ -->
+  <section class="section" id="three-layers">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers IBM DW Fundamentals M2 architectures, 365DS Architecture &amp; design</span>
+      <h2>Three layers, one factory <span class="tag concept">17 min live</span></h2>
+    </div>
+    <p class="lede">Raw materials do not go straight from the delivery truck to the customer - they get received and inspected, then assembled, then packed for shipping. Data in a warehouse makes exactly the same journey: <strong>staging</strong> receives and checks it, <strong>core</strong> assembles it into modeled shapes, and <strong>marts</strong> package it per team. Follow one Daybreak order through the building.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One order flows through staging, core, and marts - each layer adds trust, then shape, then convenience">
+        <style>
+          .ly2H { font: 700 14px Inter, sans-serif; fill: #1C2833; }
+          .ly2T { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .ly2B { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .ly2I { font: 600 12px Inter, sans-serif; fill: #1C2833; }
+          .ly2C { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .ly2N { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .ly2Arr { stroke: #5E8CB0; stroke-width: 2; fill: none; marker-end: url(#ly2Ah); }
+        </style>
+        <defs>
+          <marker id="ly2Ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#5E8CB0"/>
+          </marker>
+        </defs>
+        <text class="ly2H" x="40" y="34">1 · Staging - receiving dock</text>
+        <rect x="40" y="48" width="230" height="120" rx="8" fill="#EDF3F8" stroke="#A5C2D8"/>
+        <text class="ly2I" x="56" y="76">typed, checked copies</text>
+        <text class="ly2C" x="56" y="98">nothing invented yet -</text>
+        <text class="ly2C" x="56" y="116">source data, made honest</text>
+        <text class="ly2C" x="56" y="138">"2026-06-14" is now a real</text>
+        <text class="ly2C" x="56" y="156">date, not a piece of text</text>
+
+        <path class="ly2Arr" d="M270,108 C296,108 300,108 322,108"/>
+
+        <text class="ly2H" x="326" y="34">2 · Core - assembly floor</text>
+        <rect x="326" y="48" width="230" height="120" rx="8" fill="#3E6B8F"/>
+        <text class="ly2T" x="342" y="76">facts + dimensions</text>
+        <text class="ly2B" x="342" y="98">the modeled truth -</text>
+        <text class="ly2B" x="342" y="116">one shape, every team</text>
+        <text class="ly2B" x="342" y="138">order 1017 becomes a</text>
+        <text class="ly2B" x="342" y="156">fact row linked to nouns</text>
+
+        <path class="ly2Arr" d="M556,108 C582,108 586,108 608,108"/>
+
+        <text class="ly2H" x="612" y="34">3 · Marts - shipping dock</text>
+        <rect x="612" y="48" width="230" height="120" rx="8" fill="#5E8CB0"/>
+        <text class="ly2T" x="628" y="76">per-team slices</text>
+        <text class="ly2B" x="628" y="98">finance: revenue, ready</text>
+        <text class="ly2B" x="628" y="116">marketing: cohorts, ready</text>
+        <text class="ly2B" x="628" y="138">order 1017 now sits inside</text>
+        <text class="ly2B" x="628" y="156">June revenue, pre-shaped</text>
+
+        <rect x="40" y="196" width="802" height="52" rx="8" fill="#26435C"/>
+        <text class="ly2T" x="56" y="218">One order's journey:</text>
+        <text class="ly2B" x="56" y="238">arrives messy from the app  →  checked &amp; typed  →  modeled as a fact  →  served in a finance slice</text>
+
+        <rect x="40" y="272" width="800" height="1" fill="#E3EAF0"/>
+        <rect x="40" y="296" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="ly2N" x="64" y="308">Each layer adds one thing: staging adds TRUST, core adds SHAPE, marts add CONVENIENCE.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - receiving dock, assembly floor, shipping dock: one order through the factory</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Staging: the receiving dock<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Nothing clever happens here, on purpose. Staging is a faithful, <strong>typed and checked</strong> copy of what the source systems sent: dates become real dates, numbers become real numbers, obviously broken rows get flagged at the door. Daybreak's app stores order dates as text - fine for the app, poison for month-by-month analysis - and staging is where that quietly gets fixed.</p>
+        <ul>
+          <li><strong>Why leaders should care:</strong> staging is your quality gate. When a source system changes something upstream, staging is where it gets caught - before it reaches a board number.</li>
+          <li><strong>The discipline:</strong> no business logic here. Staging makes data honest, not meaningful. Mixing the two is how untraceable numbers are born.</li>
+          <li><strong>What to ask your team:</strong> "What happens when a source sends garbage?" A good answer names staging checks. A worrying answer is "we usually notice."</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Core: the assembly floor<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The core is where checked parts become products: data gets <strong>modeled</strong> - deliberately arranged so business questions become easy. This is where facts and dimensions live (Part 2), where history gets kept, and where "one version of the truth" is either built or lost. It is the most engineered layer and the one your data engineers will spend most of their time on.</p>
+        <ul>
+          <li><strong>One shape, every team:</strong> the core is shared. Finance and marketing read the same modeled orders - which is what makes their numbers reconcilable at all.</li>
+          <li><strong>The core remembers:</strong> when a customer upgrades plans, the app forgets the old plan; the core keeps it. That memory is what cohort and trend analysis stand on.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The meeting-ready version</strong>
+          "Staging is what the sources said. Core is what the business means. Marts are what each team needs."
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Marts: the shipping dock<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A mart is a slice of the core, pre-shaped for one audience: the finance mart has revenue with refunds already handled the finance way; the marketing mart has cohorts and channels ready to chart. Marts exist for speed and sanity - analysts should not re-derive revenue from raw parts every Monday.</p>
+        <ul>
+          <li><strong>The rule that keeps marts safe:</strong> marts are built FROM the core, never from raw sources. A mart with its own private pipeline is a second version of the truth in the making.</li>
+          <li><strong>Marts are cheap to rebuild:</strong> if a mart is wrong, you regenerate it from the core. That disposability is a feature - the core is the asset, marts are packaging.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: STAR SCHEMA ============ -->
+  <section class="section" id="star-schema">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers DLAI Data Engineering C4 M1 star schema, Kimball modeling school</span>
+      <h2>The star schema, in plain words <span class="tag concept">12 min live</span></h2>
+    </div>
+    <p class="lede">Inside the core, data is arranged in a shape so useful it has dominated the field for thirty years. <strong>Facts</strong> are events with numbers attached - an order line: 2 bags, $41. <strong>Dimensions</strong> are the nouns that give the event meaning - which customer, which product, which day. Put the fact in the middle, the nouns around it, and you have a star.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A star schema: the order-line fact table in the center, joined to customer, product, and date dimensions">
+        <style>
+          .st2H { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .st2I { font: 700 14px Inter, sans-serif; fill: #1C2833; }
+          .st2B { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .st2D { font: 600 12px Inter, sans-serif; fill: #1C2833; }
+          .st2C { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .st2N { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .st2L { stroke: #A5C2D8; stroke-width: 2; fill: none; }
+        </style>
+        <line class="st2L" x1="200" y1="80" x2="360" y2="150"/>
+        <line class="st2L" x1="680" y1="80" x2="520" y2="150"/>
+        <line class="st2L" x1="440" y1="210" x2="440" y2="252"/>
+
+        <rect x="80" y="40" width="200" height="76" rx="8" fill="#EDF3F8" stroke="#A5C2D8"/>
+        <text class="st2I" x="96" y="66">dim_customer</text>
+        <text class="st2C" x="96" y="86" fill="#5C6B78">who: name, city, plan</text>
+        <text class="st2C" x="96" y="104" fill="#5C6B78">one row per customer</text>
+
+        <rect x="600" y="40" width="200" height="76" rx="8" fill="#EDF3F8" stroke="#A5C2D8"/>
+        <text class="st2I" x="616" y="66">dim_product</text>
+        <text class="st2C" x="616" y="86" fill="#5C6B78">what: name, roast, price</text>
+        <text class="st2C" x="616" y="104" fill="#5C6B78">one row per product</text>
+
+        <rect x="330" y="120" width="220" height="90" rx="8" fill="#26435C"/>
+        <text class="st2H" x="346" y="146">fct_order_line</text>
+        <text class="st2B" x="346" y="168">the event: qty · amount</text>
+        <text class="st2B" x="346" y="188">+ keys to the three nouns</text>
+
+        <rect x="340" y="252" width="200" height="60" rx="8" fill="#EDF3F8" stroke="#A5C2D8"/>
+        <text class="st2I" x="356" y="278">dim_date</text>
+        <text class="st2C" x="356" y="298" fill="#5C6B78">when: day, month, quarter</text>
+
+        <text class="st2C" x="60" y="160">facts = verbs with numbers</text>
+        <text class="st2C" x="60" y="178">(something happened)</text>
+        <text class="st2C" x="640" y="160">dimensions = the nouns</text>
+        <text class="st2C" x="640" y="178">(who, what, when, where)</text>
+
+        <rect x="60" y="322" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="st2N" x="84" y="334">"Revenue by month by city" = the fact joined to two nouns. One obvious join - that is the point.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one fact in the middle, three nouns around it: Daybreak's first star</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why stars make questions cheap<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The app database scatters an order across half a dozen tables - great for taking orders, miserable for asking about them. The star collapses that: every business question becomes <strong>"take the fact, join the nouns you care about, summarize"</strong>. Revenue by month? Fact + date. By city? Add customer. By roast? Add product. Analysts stop solving puzzles and start answering questions.</p>
+        <ul>
+          <li><strong>Predictability is the gift:</strong> a new analyst can find their way around a star on day one. That is onboarding speed you can feel in salaries.</li>
+          <li><strong>Dashboards get faster too:</strong> BI tools are built assuming this shape. Fight the shape, fight the tools.</li>
+          <li><strong>The executive translation:</strong> "we model so that questions become one obvious join." That single sentence is Part 2.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Kimball vs Inmon - the two schools, name-dropped<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>If your data team debates modeling, two surnames will fly: <strong>Ralph Kimball</strong> (start with business questions, build stars, deliver value fast) and <strong>Bill Inmon</strong> (build a rigorous enterprise-wide model first, derive everything from it). Both schools are decades old and both work; most modern teams land Kimball-flavored, which is why this course teaches stars.</p>
+        <ul>
+          <li><strong>You do not need to referee this debate.</strong> You need to know it is a style choice, not a correctness fight.</li>
+          <li><strong>The question that cuts through:</strong> "Which business question does this model make cheap?" Any modeling choice that cannot answer that is architecture for its own sake.</li>
+          <li><strong>Depth for the curious:</strong> your builders cover both schools properly in their session b3.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: WHO DOES WHAT ============ -->
+  <section class="section" id="who-does-what">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the org chart of the factory</span>
+      <h2>Who does what <span class="tag concept">10 min live</span></h2>
+    </div>
+    <p class="lede">Architecture slides never show the people, but the layers map to roles as cleanly as the factory maps to floors - and knowing the mapping tells you exactly who to ask when something looks wrong.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The three-role mapping<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The clean division of labor in a healthy data team:</p>
+        <ul>
+          <li><strong>Data engineers own staging + core:</strong> the pipelines, the checks, the modeled star. When a number is missing or late, this is the desk.</li>
+          <li><strong>Analysts own the marts:</strong> shaping team-specific slices and the dashboards on top. When a chart looks off, start here - it is usually the fastest fix.</li>
+          <li><strong>The business owns definitions:</strong> what counts as "revenue", "active", "churned" is a leadership decision wearing a technical costume. Delegating it to whoever writes the query is how metric wars start.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The handshake, previewed</strong>
+          Business defines the metric, engineering encodes it once in the core, analysts reuse it everywhere. Session a3 is entirely about what happens when this handshake is missing - and how to install it.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>"Why are we keeping three copies of the same data?"<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The question every exec eventually asks in an architecture review - and a fair one, because the slide really does show the same orders in staging, core, and a mart. The layered answer is worth rehearsing before you need it.</p>
+        <ul>
+          <li><strong>They are not copies, they are stages:</strong> what the sources said, what the business means, what each team needs. A factory holds raw stock, assemblies, and packed goods too - nobody calls that waste.</li>
+          <li><strong>Each layer catches different failures:</strong> staging catches bad source data, core catches inconsistent logic, marts contain the blast radius of a team-specific mistake.</li>
+          <li><strong>Storage is the cheap part</strong> (a1's lesson): three well-governed stages cost pennies. One ungoverned pile costs executive hours every month.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Boardroom moment.</strong> Daybreak's COO asked exactly this, mid-review, slightly annoyed. The data lead pointed at the factory slide: "Would you ask the warehouse manager why beans, roasted batches, and packed subscriptions sit on different shelves?" Laughter, then silence, then "carry on". The metaphor did in ten seconds what the architecture diagram could not do in ten minutes.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Spotting an unhealthy division of labor<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three smells that the roles have drifted, each visible from the executive floor:</p>
+        <ul>
+          <li><strong>Analysts building private pipelines from raw sources</strong> - the marts have detached from the core, and divergent numbers are weeks away.</li>
+          <li><strong>Engineers deciding metric definitions alone</strong> - the business abdicated; expect a definition you disagree with, discovered in a board meeting.</li>
+          <li><strong>Every question routed to one heroic person</strong> - not a role problem, a bus-factor problem. The factory should outlive any single worker.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before next session <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Ask your data team for their architecture diagram and find the three layers on it - they may wear different names (raw/curated/serving, bronze/silver/gold). Same factory, different paint.</li>
+      <li>Pick one metric from your own dashboard and identify its fact and its dimensions. "Monthly recurring revenue" = which event, sliced by which nouns?</li>
+      <li>Ask an analyst: "When you build a new dashboard, do you start from the core model or from raw data?" The answer tells you whether the shipping dock is connected to the factory.</li>
+      <li>Find out who currently owns the definition of your most-argued-about metric. A name, not a team. Bring it to a3 - it is the star of that session.</li>
+      <li>Retell the factory metaphor to someone outside data this week. If it lands, you own the model; if it wobbles, reread Part 1 before a3.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This session distills the architecture and modeling chapters of the major curricula into the boardroom view. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - Module 2: architectures and layers</span><span class="note">Part 1 · staging/core/marts as the factory</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - Architecture &amp; design</span><span class="note">Parts 1 + 3 · layers and the roles around them</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DeepLearning.AI Data Engineering C4 (Joe Reis) - M1: star schema &amp; dimensional modeling</span><span class="note">Part 2 · facts and dimensions in exec terms; builders go deep in b3-b4</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · In the factory picture, what does each layer add?</p>
+      <button class="qopt" type="button">A · Staging adds speed, core adds storage, marts add security</button>
+      <button class="qopt" type="button">B · All three layers add the same thing - redundancy</button>
+      <button class="qopt" type="button">C · Staging adds trust, core adds shape, marts add convenience</button>
+      <p class="qwhy">Receiving dock checks and types the data (trust), the assembly floor models it into facts and dimensions (shape), the shipping dock packages per-team slices (convenience).</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · "Revenue by month by city" in a star schema is...</p>
+      <button class="qopt" type="button">A · The order-line fact joined to the date and customer dimensions - one obvious join</button>
+      <button class="qopt" type="button">B · A special pre-computed table someone must build for each question</button>
+      <button class="qopt" type="button">C · Impossible without exporting to a spreadsheet</button>
+      <p class="qwhy">Facts are events with numbers, dimensions are the nouns. Any "metric by noun by noun" question is the fact plus the relevant dimensions - which is exactly why the shape exists.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">3 · Who should own the definition of "active customer"?</p>
+      <button class="qopt" type="button">A · Whoever writes the SQL - they know the data best</button>
+      <button class="qopt" type="button">B · The business - it is a leadership decision that engineering then encodes once in the core</button>
+      <button class="qopt" type="button">C · Each team separately, so definitions fit their needs</button>
+      <p class="qwhy">Definitions are business decisions wearing technical costumes. Business defines, engineering encodes once, analysts reuse - break that handshake and session a3's metric wars begin.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 2 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Three layers</b><span>Staging (receiving dock) → core (assembly floor) → marts (shipping dock). Every warehouse, every vendor.</span></div>
+      <div class="cheat-item"><b>Staging</b><span>Typed, checked copies of the sources. Adds TRUST. No business logic allowed here.</span></div>
+      <div class="cheat-item"><b>Core</b><span>The modeled, shared truth - facts + dimensions, history kept. Adds SHAPE. The real asset.</span></div>
+      <div class="cheat-item"><b>Marts</b><span>Per-team slices built FROM the core. Add CONVENIENCE. Disposable packaging, cheap to rebuild.</span></div>
+      <div class="cheat-item"><b>Fact</b><span>An event with numbers - an order line: qty, amount. The verbs of the business.</span></div>
+      <div class="cheat-item"><b>Dimension</b><span>The nouns that give events meaning - customer, product, date. Who, what, when, where.</span></div>
+      <div class="cheat-item"><b>Star schema</b><span>Fact in the middle, nouns around it. "We model so questions become one obvious join."</span></div>
+      <div class="cheat-item"><b>Who does what</b><span>Engineers: staging + core. Analysts: marts. Business: definitions. Never delegate the third.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 2 of 6 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a1-why-a-warehouse.html">← Previous: Why a warehouse</a> &nbsp;·&nbsp; <a href="a3-one-truth-problem.html">Next: The one-truth problem →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

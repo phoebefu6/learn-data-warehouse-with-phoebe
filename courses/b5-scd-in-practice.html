@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 5 · Slowly changing dimensions - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Builder session 5 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Builder track · Session 5 of 10</div>
+    <h1>Slowly changing <span class="accent">dimensions</span></h1>
+    <p class="sub">Daybreak's star schema is up and answering questions - until Liam Ford upgrades from Basic to Pro and quietly breaks every historical report. Tonight you meet the most famous problem in dimensional modeling: what to do when a dimension row changes. You will run the classic Type 2 fix by hand, then automate it with MERGE, on a live warehouse in your browser.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · DE · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · The lie &amp; the SCD menu</span>
+      <span class="a3" style="flex:5">20-42 · Build-along: Type 2 by hand + MERGE</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the build stands</h2>
+    </div>
+    <p class="lede">Your Daybreak warehouse so far: a typed <strong>staging layer</strong> (b2) feeding a <strong>star schema</strong> (b3-b4) - <code>fct_order_line</code> surrounded by <code>dim_date</code>, <code>dim_customer</code>, and <code>dim_product</code>, joined on surrogate keys. Tonight adds a fourth table: <code>dim_customer_scd</code>, a history-keeping version of the customer dimension with <code>valid_from</code>, <code>valid_to</code>, and <code>is_current</code> columns. It starts loaded and current on every page below - your job is to change it correctly.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live warehouse - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The four SCD types and when each is honest, the reason surrogate keys exist at all, and a Type 2 change you executed twice - once by hand (three moves) and once with a single MERGE statement - plus the point-in-time join that reads the history back correctly.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE OVERWRITE LIE ============ -->
+  <section class="section" id="overwrite-lie">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers 365DS S7 slowly changing dimensions</span>
+      <h2>The overwrite lie <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">In July, Liam Ford (customer 2, Basic since December) upgrades to Pro. The lazy fix is one UPDATE on his dimension row. It feels harmless - until finance re-runs the Q1 revenue-by-plan report and gets <strong>different numbers for a quarter that ended months ago</strong>. Every order Liam placed as a Basic customer is now re-filed under Pro, because the report joins facts to whatever the dimension says <em>today</em>.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Overwriting a dimension row silently changes historical reports">
+        <style>
+          .ovH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .ovT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .ovR { font: 600 12px "SF Mono", Menlo, monospace; fill: #1C2833; }
+          .ovC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .ovN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .ovArr { stroke: #5E8CB0; stroke-width: 2; fill: none; marker-end: url(#ovAh); }
+        </style>
+        <defs>
+          <marker id="ovAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#5E8CB0"/>
+          </marker>
+        </defs>
+        <text class="ovH" x="40" y="36">Q1 revenue by plan · run in April</text>
+        <rect x="40" y="52" width="340" height="26" rx="6" fill="#26435C"/>
+        <text class="ovT" x="52" y="70">plan · revenue</text>
+        <rect x="40" y="86" width="340" height="26" rx="6" fill="#EDF3F8"/>
+        <text class="ovR" x="52" y="104">Basic · 320.00   (Liam's 42.00 in here)</text>
+        <rect x="40" y="120" width="340" height="26" rx="6" fill="#EDF3F8"/>
+        <text class="ovR" x="52" y="138">Pro · 610.00</text>
+
+        <text class="ovH" x="500" y="36">Same report · re-run in July</text>
+        <rect x="500" y="52" width="340" height="26" rx="6" fill="#26435C"/>
+        <text class="ovT" x="512" y="70">plan · revenue</text>
+        <rect x="500" y="86" width="340" height="26" rx="6" fill="#EDF3F8"/>
+        <text class="ovR" x="512" y="104">Basic · 278.00   (Liam's 42.00 gone)</text>
+        <rect x="500" y="120" width="340" height="26" rx="6" fill="#F59E0B"/>
+        <text class="ovR" x="512" y="138">Pro · 652.00   (it moved here)</text>
+
+        <path class="ovArr" d="M384,112 C430,112 450,112 496,112"/>
+        <text class="ovC" x="398" y="100">one UPDATE</text>
+
+        <text class="ovC" x="40" y="188">What happened in between: UPDATE dim_customer SET plan = 'Pro' WHERE customer_id = 2;</text>
+        <text class="ovC" x="40" y="208">No fact row changed. No revenue moved in the real world. Only the label rewrote itself -</text>
+        <text class="ovC" x="40" y="228">and every join from old facts to the customer dimension now reads the new label.</text>
+
+        <rect x="40" y="252" width="800" height="1" fill="#E3EAF0"/>
+        <text class="ovC" x="40" y="280">Illustrative numbers - Liam's two completed Q1 orders total 42.00 and swap columns.</text>
+        <rect x="40" y="300" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="ovN" x="64" y="312">History that rewrites itself is a lie. A closed quarter must give the same answer forever.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one innocent UPDATE, and a closed quarter changes its answer</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why nobody notices until it hurts<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The overwrite lie is sneaky because nothing errors. The query runs, the dashboard renders, the numbers look plausible. It surfaces weeks later as a trust incident: finance's saved Q1 deck disagrees with the live Q1 dashboard, and now every number in the warehouse is suspect.</p>
+        <ul>
+          <li><strong>Facts are safe by nature:</strong> an order happened on a date, at a price. Nobody edits history there.</li>
+          <li><strong>Dimensions drift by nature:</strong> customers move cities, upgrade plans, change names. Products get repriced and recategorized. The change is real and legitimate - the question is how to record it.</li>
+          <li><strong>"Slowly changing"</strong> is Kimball's name for exactly this: attributes that change occasionally, not constantly, and whose history may matter.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The sales-territory reorg.</strong> A company redraws sales regions in June. Overwrite the rep dimension and every January deal re-files into the new regions - last year's regional performance review is now fiction, and the bonus disputes write themselves. Territory realignment is the canonical SCD war story in almost every BI team.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>When overwriting is actually fine<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Not every change deserves history. If a customer's name was misspelled at signup, the old value was never true - fixing it everywhere, including the past, is the honest move. The test question: <strong>"was the old value ever correct?"</strong> If no, overwrite freely (that is Type 1, next part). If yes, and anyone might slice facts by it, you owe the warehouse a history.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: THE SCD MENU ============ -->
+  <section class="section" id="scd-menu">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the Kimball SCD type menu</span>
+      <h2>The SCD menu: Types 0, 1, 2, 3 <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">The fix is a menu, not a single trick. For each changing attribute you pick a policy - and the policies have numbers. Two of them do ninety-five percent of the work in real warehouses.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SCD Types 0 through 3 compared as row strips">
+        <style>
+          .tyH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .tyT { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .tyR { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #FFFFFF; }
+          .tyI { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #1C2833; }
+          .tyC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .tyN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+        </style>
+        <text class="tyH" x="40" y="32">How each type records "Liam: Basic becomes Pro"</text>
+
+        <rect x="40" y="50" width="92" height="26" rx="6" fill="#26435C"/>
+        <text class="tyT" x="52" y="68">Type 0</text>
+        <rect x="144" y="50" width="300" height="26" rx="4" fill="#5E8CB0"/>
+        <text class="tyR" x="156" y="68">Liam · Basic   (frozen forever)</text>
+        <text class="tyC" x="460" y="68">never change - signup_date, original plan, birth facts</text>
+
+        <rect x="40" y="94" width="92" height="26" rx="6" fill="#26435C"/>
+        <text class="tyT" x="52" y="112">Type 1</text>
+        <rect x="144" y="94" width="300" height="26" rx="4" fill="#3E6B8F"/>
+        <text class="tyR" x="156" y="112">Liam · Pro   (old value gone)</text>
+        <text class="tyC" x="460" y="112">overwrite - honest for typo fixes, a lie for real change</text>
+
+        <rect x="40" y="138" width="92" height="26" rx="6" fill="#F59E0B"/>
+        <text class="tyI" x="52" y="156">Type 2</text>
+        <rect x="144" y="138" width="300" height="26" rx="4" fill="#3E6B8F"/>
+        <text class="tyR" x="156" y="156">key 2 · Basic · Dec 10 to Jun 30</text>
+        <rect x="144" y="170" width="300" height="26" rx="4" fill="#F59E0B"/>
+        <text class="tyI" x="156" y="188">key 16 · Pro · Jul 01 to (open)</text>
+        <text class="tyC" x="460" y="156">new ROW per version + valid_from / valid_to / is_current</text>
+        <text class="tyC" x="460" y="176">the workhorse - full history, point-in-time joins work</text>
+
+        <rect x="40" y="214" width="92" height="26" rx="6" fill="#26435C"/>
+        <text class="tyT" x="52" y="232">Type 3</text>
+        <rect x="144" y="214" width="300" height="26" rx="4" fill="#3E6B8F"/>
+        <text class="tyR" x="156" y="232">Liam · Pro · prev_plan: Basic</text>
+        <text class="tyC" x="460" y="232">previous-value COLUMN - one step of history, rare</text>
+
+        <rect x="40" y="262" width="800" height="1" fill="#E3EAF0"/>
+        <text class="tyC" x="40" y="290">Pick per ATTRIBUTE, not per table: one dimension can hold Type 0, 1, and 2 columns side by side.</text>
+        <rect x="40" y="312" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="tyN" x="64" y="324">Default instinct: Type 1 for corrections, Type 2 for anything reports slice by. 0 and 3 are seasoning.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - four policies for one change, and why Type 2 is the workhorse</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why surrogate keys make Type 2 possible<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Back in b4 you built <code>dim_customer</code> with a generated <code>customer_key</code> instead of joining facts straight to <code>customer_id</code>. Tonight is the payoff. Type 2 means <strong>one customer becomes many rows</strong> - and many rows cannot share a primary key.</p>
+        <ul>
+          <li><strong>Natural key</strong> (<code>customer_id = 2</code>): identifies the person. Stays the same across every version. Nicknamed the durable key.</li>
+          <li><strong>Surrogate key</strong> (<code>customer_key = 2, then 16</code>): identifies one <em>version</em> of the person. Every new version gets a fresh key.</li>
+          <li>A fact row loaded in March points at the version key that was current in March - so old facts stay attached to old attribute values <em>automatically</em>, with a plain key join.</li>
+        </ul>
+        <p>If your facts join on the natural key instead, history is still recoverable - but every query must do the date-range dance you will meet in Part 3. Both patterns exist in the wild; know which one your shop uses.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Choosing a type: a 30-second checklist<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Was the old value ever true?</strong> No: Type 1. Yes: keep going.</li>
+          <li><strong>Will anyone slice facts by this attribute's past values?</strong> Yes: Type 2. No: Type 1 is defensible.</li>
+          <li><strong>Is the attribute a birth fact</strong> (signup date, first channel)? Type 0 - freeze it.</li>
+          <li><strong>Do analysts only ever ask "current vs immediately previous"?</strong> Type 3 fits, but ask twice - the second change destroys the first history.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: READING TYPE 2 ============ -->
+  <section class="section" id="reading-type2">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · reading a Type 2 dimension</span>
+      <h2>Reading history back: current view &amp; point-in-time <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">A Type 2 dimension answers two different questions, and each has its own join. <strong>"What is true now?"</strong> filters <code>WHERE is_current</code>. <strong>"What was true when the fact happened?"</strong> matches the fact's date into the version's validity window: <code>fact_date BETWEEN valid_from AND coalesce(valid_to, DATE '9999-12-31')</code> - the coalesce turns the open-ended current row into a window that ends at the end of time.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Tour tonight's new table: dim_customer_scd<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The <code>scd</code> setup adds <code>dim_customer_scd</code> to your star: same attributes as <code>dim_customer</code>, plus the three history columns. Right now every customer has exactly one row, valid from their signup date, open-ended, current.</p>
+        <div class="sqlbox" data-caption="The current view: WHERE is_current. Today that is everyone - all 15 rows, all open-ended." data-setup="scd">
+          <pre class="sql-src">SELECT customer_id, name, plan, valid_from, valid_to, is_current
+FROM dim_customer_scd
+WHERE is_current
+ORDER BY customer_id
+LIMIT 6;</pre>
+        </div>
+        <div class="sqlbox" data-caption="Version count per customer. All 1s - a warehouse with no history yet. Demo 1 changes that." data-setup="scd">
+          <pre class="sql-src">SELECT customer_id, count(*) AS versions
+FROM dim_customer_scd
+GROUP BY customer_id
+ORDER BY versions DESC, customer_id
+LIMIT 5;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The 9999-12-31 trick, and why not NULL comparisons<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Current rows keep <code>valid_to</code> NULL - honest, because the window has no known end. But <code>date BETWEEN x AND NULL</code> evaluates to NULL, which silently drops rows. Hence the idiom: <code>coalesce(valid_to, DATE '9999-12-31')</code> converts "no end yet" into "the end of time" only at query time. Some teams store <code>9999-12-31</code> physically instead of NULL; either works, pick one and write it down in the model docs.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Run Liam's upgrade by hand <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">A Type 2 change is three moves: <strong>close the old row</strong> (stamp <code>valid_to</code>, flip <code>is_current</code> off), <strong>insert the new version</strong> (fresh surrogate key, new value, open-ended), and <strong>read the timeline back</strong>. Do it slowly once by hand - the MERGE in Demo 2 will make far more sense afterwards.</p>
+
+    <div class="steps">
+      <div class="step"><p><strong>Move 1 - close out.</strong> The UPDATE touches only Liam's current row: <code>valid_to</code> becomes June 30, <code>is_current</code> becomes FALSE. His Basic era is now a sealed window: Dec 10 to Jun 30.</p></div>
+      <div class="step"><p><strong>Move 2 - insert the new version.</strong> A fresh surrogate key (<code>max(customer_key) + 1</code>), plan Pro, valid from July 1, no end date, current. Same person, second row.</p></div>
+      <div class="step"><p><strong>Move 3 - read the timeline.</strong> The final SELECT shows both versions in order. Two rows, no gaps, no overlap: Basic ends June 30, Pro begins July 1.</p></div>
+      <div class="step"><p>Run it. Then edit: make the upgrade effective August 1 instead, and re-run. The timeline should reseal itself around the new dates.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="The Type 2 change, move by move. Every Run starts from a fresh warehouse, so re-running is always safe." data-setup="scd">
+      <pre class="sql-src">UPDATE dim_customer_scd
+SET valid_to = DATE '2026-06-30', is_current = FALSE
+WHERE customer_id = 2 AND is_current;
+
+INSERT INTO dim_customer_scd
+SELECT (SELECT max(customer_key) + 1 FROM dim_customer_scd),
+       customer_id, name, city, country,
+       'Pro', DATE '2026-07-01', NULL, TRUE
+FROM stg_customers
+WHERE customer_id = 2;
+
+SELECT customer_id, plan, valid_from, valid_to, is_current
+FROM dim_customer_scd
+WHERE customer_id = 2
+ORDER BY valid_from;</pre>
+    </div>
+
+    <p class="lede">Now the payoff: re-run finance's revenue-by-plan report <em>after</em> the change, joining each order to the plan that was current <strong>on the order date</strong>. Liam's old orders stay filed under Basic. The closed quarter keeps its answer.</p>
+
+    <div class="sqlbox" data-caption="Same change, then the report with a point-in-time join. Liam's 42.00 stays under Basic - history preserved." data-setup="scd">
+      <pre class="sql-src">UPDATE dim_customer_scd
+SET valid_to = DATE '2026-06-30', is_current = FALSE
+WHERE customer_id = 2 AND is_current;
+
+INSERT INTO dim_customer_scd
+SELECT (SELECT max(customer_key) + 1 FROM dim_customer_scd),
+       customer_id, name, city, country,
+       'Pro', DATE '2026-07-01', NULL, TRUE
+FROM stg_customers
+WHERE customer_id = 2;
+
+SELECT d.plan,
+       ROUND(SUM(f.line_revenue), 2) AS completed_revenue
+FROM fct_order_line f
+JOIN dim_customer c ON f.customer_key = c.customer_key
+JOIN dim_customer_scd d
+  ON c.customer_id = d.customer_id
+ AND f.date_key BETWEEN d.valid_from
+                    AND coalesce(d.valid_to, DATE '9999-12-31')
+WHERE f.status = 'completed'
+GROUP BY d.plan
+ORDER BY d.plan;</pre>
+    </div>
+
+    <div class="callout tip">
+      <strong>Try the lie for contrast.</strong> In the box above, replace the BETWEEN join with <code>JOIN dim_customer_scd d ON c.customer_id = d.customer_id AND d.is_current</code> and re-run. Liam's revenue jumps to Pro - that is the Type 1 behavior you just engineered your way out of.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Automate it: MERGE, then your turn <span class="tag demo">★ 10 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Real loads do not hand-write one UPDATE per customer. They receive <strong>today's snapshot</strong> of the source and reconcile it against the dimension: changed customers get closed out, brand-new customers get inserted - one MERGE decides which is which. A final INSERT then opens the new version rows for the changed ones.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The MERGE version of tonight's load<span class="mini">6 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Tonight's snapshot carries two stories: Liam (exists, plan changed) and Ivy Nolan (customer 16, never seen before). Watch the ON clause - it matches only <em>current rows whose plan actually differs</em>, so unchanged customers pass through untouched. Batch keys land at durable id + 100 so you can spot tonight's arrivals at a glance.</p>
+        <div class="sqlbox" data-caption="One MERGE routes changed vs new; one INSERT opens the new versions; the SELECT reads both timelines." data-setup="scd">
+          <pre class="sql-src">MERGE INTO dim_customer_scd t
+USING (
+  SELECT * FROM (VALUES
+    (2,  'Liam Ford', 'Austin', 'USA',   'Pro'),
+    (16, 'Ivy Nolan', 'Osaka',  'Japan', 'Basic')
+  ) v(customer_id, name, city, country, plan)
+) src
+ON t.customer_id = src.customer_id
+   AND t.is_current AND t.plan &lt;&gt; src.plan
+WHEN MATCHED THEN
+  UPDATE SET valid_to = DATE '2026-06-30', is_current = FALSE
+WHEN NOT MATCHED THEN
+  INSERT VALUES (src.customer_id + 100, src.customer_id, src.name,
+                 src.city, src.country, src.plan,
+                 DATE '2026-07-01', NULL, TRUE);
+
+INSERT INTO dim_customer_scd
+SELECT d.customer_key + 100, d.customer_id, d.name, d.city, d.country,
+       'Pro', DATE '2026-07-01', NULL, TRUE
+FROM dim_customer_scd d
+WHERE d.customer_id = 2 AND d.valid_to = DATE '2026-06-30';
+
+SELECT customer_id, plan, valid_from, valid_to, is_current
+FROM dim_customer_scd
+WHERE customer_id IN (2, 16)
+ORDER BY customer_id, valid_from;</pre>
+        </div>
+        <p>Read the result: Liam has two rows (Basic sealed, Pro open), Ivy has one fresh row. Three situations - changed, new, unchanged - one repeatable script. This exact reconcile shape returns as the loading workhorse in b6.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Your turn: Zoe Tan moves Singapore to Tokyo<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Zoe Tan (customer 14) relocates on July 1. Write the three-move Type 2 change yourself before you peek - close out, insert with the new city and country, read the timeline. The box below holds a working answer.</p>
+        <div class="sqlbox" data-caption="One worked answer - write yours first. Only city and country change; her plan rides along unchanged." data-setup="scd">
+          <pre class="sql-src">UPDATE dim_customer_scd
+SET valid_to = DATE '2026-06-30', is_current = FALSE
+WHERE customer_id = 14 AND is_current;
+
+INSERT INTO dim_customer_scd
+SELECT (SELECT max(customer_key) + 1 FROM dim_customer_scd),
+       customer_id, name, 'Tokyo', 'Japan',
+       plan, DATE '2026-07-01', NULL, TRUE
+FROM stg_customers
+WHERE customer_id = 14;
+
+SELECT customer_id, city, country, valid_from, valid_to, is_current
+FROM dim_customer_scd
+WHERE customer_id = 14
+ORDER BY valid_from;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Point-in-time: what plan was Liam on, order by order?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The BETWEEN join answers per-fact questions too. After the upgrade, ask the warehouse what plan Liam was on the day each of his orders happened - both answer Basic, because both predate July. Any order he places from July onward will answer Pro, with no query change.</p>
+        <div class="sqlbox" data-caption="The change, then a per-order point-in-time lookup. The join picks the version whose window contains each order date." data-setup="scd">
+          <pre class="sql-src">UPDATE dim_customer_scd
+SET valid_to = DATE '2026-06-30', is_current = FALSE
+WHERE customer_id = 2 AND is_current;
+
+INSERT INTO dim_customer_scd
+SELECT (SELECT max(customer_key) + 1 FROM dim_customer_scd),
+       customer_id, name, city, country,
+       'Pro', DATE '2026-07-01', NULL, TRUE
+FROM stg_customers
+WHERE customer_id = 2;
+
+SELECT f.order_id, f.date_key, d.plan AS plan_when_ordered
+FROM fct_order_line f
+JOIN dim_customer c ON f.customer_key = c.customer_key
+JOIN dim_customer_scd d
+  ON c.customer_id = d.customer_id
+ AND f.date_key BETWEEN d.valid_from
+                    AND coalesce(d.valid_to, DATE '9999-12-31')
+WHERE c.customer_id = 2
+ORDER BY f.date_key;</pre>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Run a second change for the same customer: after Liam's July upgrade, downgrade him back to Basic on September 1. His timeline should show three sealed-and-open windows in order.</li>
+      <li>Pick three attributes from a dimension at work (or from Daybreak: <code>plan</code>, <code>city</code>, <code>signup_date</code>) and assign each an SCD type using Part 2's checklist. Write one sentence of justification per attribute.</li>
+      <li>Break the timeline on purpose: give the new version <code>valid_from = DATE '2026-06-15'</code> so windows overlap, then run the point-in-time report and watch Liam's June revenue double-count. Overlaps are the classic Type 2 bug.</li>
+      <li>Explain to a colleague why <code>customer_key</code> and <code>customer_id</code> must be different columns in a Type 2 world. If they push back, Part 2's card has your script.</li>
+      <li>Bring one "who changed this dimension" mystery from work to b6 - loading patterns are where changes get caught systematically.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This track teaches the working core of the major data-warehousing curricula, run on a live engine instead of slides. Certificates, graded labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - S7: slowly changing dimensions</span><span class="note">Parts 1-3 + both demos · all four types, Type 2 executed live</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DeepLearning.AI Data Engineering C4 (Joe Reis) - modeling change over time</span><span class="note">Part 2 · the data-vault contrast to SCD lands in b9</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - dimension maintenance</span><span class="note">Demos 1-2 · IBM's populate-and-maintain labs continue in b6</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Marketing wants "revenue by the plan the customer was on at purchase time" to stay correct forever. Which SCD type does the customer plan column need?</p>
+      <button class="qopt" type="button">A · Type 1 - overwrite the plan when it changes</button>
+      <button class="qopt" type="button">B · Type 2 - a new row per version with valid_from / valid_to / is_current</button>
+      <button class="qopt" type="button">C · Type 0 - never allow the plan to change</button>
+      <p class="qwhy">Type 2 keeps every version as its own row, so old facts keep joining to the value that was true when they happened. Type 1 rewrites history; Type 0 would reject a real upgrade.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · Why does Type 2 require a surrogate key like customer_key on top of customer_id?</p>
+      <button class="qopt" type="button">A · One customer becomes many version rows, and each row needs its own unique key</button>
+      <button class="qopt" type="button">B · Surrogate keys compress better than natural keys</button>
+      <button class="qopt" type="button">C · Joins on integers are illegal against natural keys</button>
+      <p class="qwhy">customer_id identifies the person and repeats across versions; customer_key identifies one version. Without it, "one row per version" has no primary key - and facts cannot pin themselves to a specific version.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">3 · The point-in-time join matches a fact to the right dimension version with which predicate?</p>
+      <button class="qopt" type="button">A · WHERE is_current, always</button>
+      <button class="qopt" type="button">B · fact_date = valid_from</button>
+      <button class="qopt" type="button">C · fact_date BETWEEN valid_from AND coalesce(valid_to, DATE '9999-12-31')</button>
+      <p class="qwhy">Each version owns a validity window; the fact's date falls into exactly one. The coalesce turns the open-ended current row's NULL into "end of time" so BETWEEN can evaluate it.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 5 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The overwrite lie</b><span>Updating a dimension in place silently re-files every historical fact under the new value. Closed quarters change their answers.</span></div>
+      <div class="cheat-item"><b>Type 0 / 1</b><span>0: freeze birth facts forever. 1: overwrite - honest only when the old value was never true (typo fixes).</span></div>
+      <div class="cheat-item"><b>Type 2</b><span>New row per version + valid_from, valid_to, is_current. The workhorse: full history, point-in-time joins.</span></div>
+      <div class="cheat-item"><b>Type 3</b><span>A previous-value column. One step of history only - the second change erases the first. Rare, for good reason.</span></div>
+      <div class="cheat-item"><b>Surrogate vs durable key</b><span>customer_key names a version; customer_id names the person. Type 2 is impossible without both.</span></div>
+      <div class="cheat-item"><b>The three moves</b><span>Close the old row (stamp valid_to, is_current FALSE), insert the new version (fresh key, open-ended), verify the timeline.</span></div>
+      <div class="cheat-item"><b>Current vs point-in-time</b><span>Now: WHERE is_current. Then: fact_date BETWEEN valid_from AND coalesce(valid_to, DATE '9999-12-31').</span></div>
+      <div class="cheat-item"><b>MERGE reconcile</b><span>One statement routes today's snapshot: changed rows close out, new customers insert, unchanged pass through. Star of b6.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 5 of 10 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b4-building-dimensions.html">← Prev: Building dimensions</a> &nbsp;·&nbsp; <a href="b6-loading-patterns.html">Next: Loading patterns →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/dw-seed.js?v=1"></script>
+<script src="../assets/warehouse-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

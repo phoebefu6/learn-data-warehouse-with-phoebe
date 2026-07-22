@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 10 · Capstone: the whole warehouse - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Builder session 10 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Builder track · Session 10 of 10</div>
+    <h1>Capstone: the <span class="accent">whole warehouse</span></h1>
+    <p class="sub">Nine sessions, one layer at a time. Tonight you assemble all of it in one sitting: raw Daybreak source to staging to a star schema with history, then serve the board the quarterly pack they asked for - every keystroke live on DuckDB in your browser. No new concepts. Just proof that you can build a warehouse end to end.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · DE · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">60 min · capstone</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · The brief</span>
+      <span class="a2" style="flex:4">3-15 · Stage it</span>
+      <span class="a3" style="flex:6">15-45 · Model it &amp; serve it</span>
+      <span class="a4" style="flex:1">45-60 · Wrap</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>The brief</h2>
+    </div>
+    <p class="lede">Daybreak's board meets Friday. They want a one-page quarterly pack: <strong>monthly revenue trend, refund rate by channel, weekend share of orders, top products</strong>. The catch you now understand: none of those come cleanly off the app database. So you will build the whole warehouse that makes them a five-line query each - source to staging (b2) to star with surrogate keys and a date dimension (b3-b4) to a slowly changing customer dimension (b5) to served answers (b7), with the loading and performance instincts from b6 and b8 baked in.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live warehouse - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you prove today</strong>
+      That you can take a messy operational database and, with nothing but SQL and a columnar engine, produce a trustworthy, documented, board-ready set of answers - the entire job of a data warehouse, done with your own hands.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: ARCHITECTURE RECAP ============ -->
+  <section class="section" id="recap">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · the pipeline you built across b2-b9</span>
+      <h2>The whole pipeline on one strip <span class="tag concept">3 min live</span></h2>
+    </div>
+    <p class="lede">Before you type, see the shape. Every stage below is one session's work; tonight you run them back to back. Read it left to right - that is the order your scripts will follow.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The full Daybreak warehouse pipeline: source to staging to star plus SCD to marts to served answers">
+        <style>
+          .cpT { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .cpS { font: 600 11px Inter, sans-serif; fill: #3D2800; }
+          .cpC { font: 400 11.5px Inter, sans-serif; fill: #5C6B78; }
+          .cpN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .cpArr { stroke: #5E8CB0; stroke-width: 2.5; fill: none; marker-end: url(#cpAh); }
+        </style>
+        <defs>
+          <marker id="cpAh" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#5E8CB0"/>
+          </marker>
+        </defs>
+        <rect x="24" y="70" width="140" height="60" rx="8" fill="#26435C"/>
+        <text class="cpT" x="52" y="96">Source</text>
+        <text class="cpS" x="42" y="150" class="cpS">raw OLTP</text>
+        <text class="cpC" x="44" y="150">raw OLTP</text>
+
+        <rect x="204" y="70" width="140" height="60" rx="8" fill="#3E6B8F"/>
+        <text class="cpT" x="228" y="96">Staging</text>
+        <text class="cpC" x="228" y="150">b2 · typed</text>
+
+        <rect x="384" y="70" width="140" height="60" rx="8" fill="#5E8CB0"/>
+        <text class="cpT" x="410" y="90">Star +</text>
+        <text class="cpT" x="410" y="110">SCD</text>
+        <text class="cpC" x="392" y="150">b3-b5 · modeled</text>
+
+        <rect x="564" y="70" width="140" height="60" rx="8" fill="#3E6B8F"/>
+        <text class="cpT" x="592" y="96">Marts</text>
+        <text class="cpC" x="576" y="150">b6-b7 · policy</text>
+
+        <rect x="744" y="70" width="112" height="60" rx="8" fill="#26435C"/>
+        <text class="cpT" x="762" y="90">Board</text>
+        <text class="cpT" x="762" y="110">pack</text>
+        <text class="cpC" x="748" y="150">b8 · fast</text>
+
+        <path class="cpArr" d="M164,100 L202,100"/>
+        <path class="cpArr" d="M344,100 L382,100"/>
+        <path class="cpArr" d="M524,100 L562,100"/>
+        <path class="cpArr" d="M704,100 L742,100"/>
+
+        <rect x="24" y="210" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="cpN" x="48" y="222">Demo 1 stages it, Demo 2 models it, Demo 3 serves it. Same order, every real warehouse.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the five stages you assemble tonight</figcaption>
+    </figure>
+
+    <div class="callout tip">
+      <strong>One rule to remember all night</strong>
+      Every playground starts from a <strong>fresh database</strong> - state never carries between boxes. So Demo 2 rebuilds staging in its own script before modeling, and Demo 3 starts from a pre-built star. That is not busywork; re-runnable scripts are exactly the idempotency lesson from b6.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 1: STAGE IT ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 3 · Stage it</span>
+      <h2>Raw source to a trusted staging layer <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Start where every warehouse starts: get clean, typed copies out of the raw source, and prove they are trustworthy before anything downstream touches them. This is b2, compressed into one script.</p>
+
+    <div class="steps">
+      <div class="step"><p>Build <code>stg_customers</code>, <code>stg_orders</code> (CAST the text date), and <code>stg_order_items</code> (with a computed <code>line_amount</code>).</p></div>
+      <div class="step"><p>Run the three quality gates: row-count reconciliation, a null scan on the key you will join on, and a freshness check against a fixed reference date.</p></div>
+      <div class="step"><p>End with a one-row summary so you can see at a glance that staging is sound.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="The whole staging layer plus its quality gates, in one re-runnable script.">
+      <pre class="sql-src">CREATE TABLE stg_customers AS
+SELECT customer_id, name, city, country,
+       CAST(signup_date AS DATE) AS signup_date, plan
+FROM customers;
+
+CREATE TABLE stg_orders AS
+SELECT order_id, customer_id,
+       CAST(order_date AS DATE) AS order_date, status, channel
+FROM orders;
+
+CREATE TABLE stg_order_items AS
+SELECT order_id, product_id, quantity, unit_price,
+       quantity * unit_price AS line_amount
+FROM order_items;
+
+SELECT
+  (SELECT count(*) FROM stg_orders)                              AS orders_staged,
+  (SELECT count(*) FROM orders)                                 AS orders_source,
+  (SELECT count(*) FROM stg_orders WHERE customer_id IS NULL)   AS null_keys,
+  (SELECT max(order_date) FROM stg_orders)                      AS latest_order,
+  (SELECT max(order_date) FROM stg_orders) &gt;= DATE '2026-06-01' AS is_fresh;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Gates before glory.</strong> The temptation in a capstone is to race to the pretty chart. Real teams that skip the reconciliation row ship warehouses that quietly drop 3% of orders on a bad load and nobody notices for a month. The boring summary SELECT is the professional move.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2: MODEL IT ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 3 · Model it</span>
+      <h2>Dimensions, a fact, and a history flourish <span class="tag demo">★ 15 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Now the star. This script is long on purpose - every line is one you wrote in b3, b4, or b5. Because the database is fresh, it rebuilds staging in a few lines first, then adds the date dimension, two more dimensions with surrogate keys, the fact table, and one slowly changing dimension move on customer 2.</p>
+
+    <div class="steps">
+      <div class="step"><p>Rebuild the staging tables this box needs (fast - three CTAS).</p></div>
+      <div class="step"><p>Build <code>dim_date</code> with <code>generate_series</code>, then <code>dim_customer</code> and <code>dim_product</code> with <code>row_number()</code> surrogate keys.</p></div>
+      <div class="step"><p>Assemble <code>fct_order_line</code> by joining staging to the dimension keys.</p></div>
+      <div class="step"><p>Confirm the whole star with a row-count-per-table summary.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="The full star build. Long, yes - but every clause is a session you already did.">
+      <pre class="sql-src">CREATE TABLE stg_customers AS
+SELECT customer_id, name, city, country,
+       CAST(signup_date AS DATE) AS signup_date, plan FROM customers;
+CREATE TABLE stg_orders AS
+SELECT order_id, customer_id, CAST(order_date AS DATE) AS order_date,
+       status, channel FROM orders;
+CREATE TABLE stg_order_items AS
+SELECT order_id, product_id, quantity, unit_price,
+       quantity * unit_price AS line_amount FROM order_items;
+
+CREATE TABLE dim_date AS
+SELECT CAST(gs AS DATE) AS date_key,
+       EXTRACT(year FROM gs) AS year,
+       EXTRACT(month FROM gs) AS month,
+       strftime(gs, '%b') AS month_name,
+       EXTRACT(dow FROM gs) IN (0, 6) AS is_weekend
+FROM generate_series(DATE '2025-11-01', DATE '2026-06-30', INTERVAL 1 DAY) t(gs);
+
+CREATE TABLE dim_customer AS
+SELECT row_number() OVER (ORDER BY customer_id) AS customer_key,
+       customer_id, name, city, country, plan FROM stg_customers;
+
+CREATE TABLE dim_product AS
+SELECT row_number() OVER (ORDER BY product_id) AS product_key,
+       product_id, name, category, price, roast FROM products;
+
+CREATE TABLE fct_order_line AS
+SELECT dc.customer_key, dp.product_key, o.order_date AS date_key,
+       o.order_id, oi.quantity, oi.line_amount AS line_revenue,
+       o.status, o.channel
+FROM stg_orders o
+JOIN stg_order_items oi USING (order_id)
+JOIN dim_customer dc ON o.customer_id = dc.customer_id
+JOIN dim_product  dp ON oi.product_id = dp.product_id;
+
+SELECT 'dim_date' AS tbl, count(*) AS rows FROM dim_date
+UNION ALL SELECT 'dim_customer', count(*) FROM dim_customer
+UNION ALL SELECT 'dim_product', count(*) FROM dim_product
+UNION ALL SELECT 'fct_order_line', count(*) FROM fct_order_line;</pre>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The SCD flourish - preserve history on an upgrade<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The star above uses a plain <code>dim_customer</code>. In production you would run the b5 Type 2 pattern so an upgrade does not rewrite the past. Here it is on the pre-built <code>scd</code> star, standalone and re-runnable - Liam Ford (customer 2) moves Basic to Pro:</p>
+        <div class="sqlbox" data-setup="scd" data-caption="Close out the old version, open a new one - history stays intact.">
+          <pre class="sql-src">UPDATE dim_customer_scd
+SET valid_to = DATE '2026-06-30', is_current = FALSE
+WHERE customer_id = 2 AND is_current;
+
+INSERT INTO dim_customer_scd
+SELECT (SELECT max(customer_key) + 1 FROM dim_customer_scd),
+       customer_id, name, city, country, 'Pro',
+       DATE '2026-07-01', NULL, TRUE
+FROM stg_customers WHERE customer_id = 2;
+
+SELECT customer_id, plan, valid_from, valid_to, is_current
+FROM dim_customer_scd WHERE customer_id = 2 ORDER BY valid_from;</pre>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 3: SERVE IT ============ -->
+  <section class="section" id="demo-3">
+    <div class="section-kicker">
+      <span class="klabel">Demo 3 of 3 · Serve it</span>
+      <h2>The board pack, four answers and an export <span class="tag demo">★ 15 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">The payoff. These run against the pre-built <code>star</code> setup, so you can feel how a good model turns each board question into a short, obvious query. Four answers, then the export flourish from b9.</p>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Answer 1 · Monthly revenue trend<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="star" data-caption="Completed orders only - the finance definition of revenue.">
+          <pre class="sql-src">SELECT d.month_name,
+       ROUND(SUM(f.line_revenue), 0) AS revenue
+FROM fct_order_line f
+JOIN dim_date d ON f.date_key = d.date_key
+WHERE f.status = 'completed'
+GROUP BY d.month_name, d.month
+ORDER BY d.month;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Answer 2 · Refund rate by channel<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="star" data-caption="A rate is the average of a 1/0 flag.">
+          <pre class="sql-src">SELECT channel,
+       count(*) AS order_lines,
+       ROUND(AVG(CASE WHEN status = 'refunded' THEN 1.0 ELSE 0 END) * 100, 1) AS refund_pct
+FROM fct_order_line
+GROUP BY channel
+ORDER BY refund_pct DESC;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Answer 3 · Weekend share of orders<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-setup="star" data-caption="dim_date already knows what a weekend is - no date maths here.">
+          <pre class="sql-src">SELECT CASE WHEN d.is_weekend THEN 'weekend' ELSE 'weekday' END AS day_type,
+       count(DISTINCT f.order_id) AS orders
+FROM fct_order_line f
+JOIN dim_date d ON f.date_key = d.date_key
+GROUP BY day_type;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Answer 4 · Top products by revenue, and the export<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The top-products answer, then the b9 move: write the monthly trend to a Parquet file and read it straight back - the board pack as a portable artifact.</p>
+        <div class="sqlbox" data-setup="star" data-caption="Top 3 products - one join to dim_product.">
+          <pre class="sql-src">SELECT p.name,
+       ROUND(SUM(f.line_revenue), 0) AS revenue
+FROM fct_order_line f
+JOIN dim_product p ON f.product_key = p.product_key
+WHERE f.status = 'completed'
+GROUP BY p.name
+ORDER BY revenue DESC
+LIMIT 3;</pre>
+        </div>
+        <div class="sqlbox" data-setup="star" data-caption="Export the trend to Parquet, then read it back - a shippable board pack.">
+          <pre class="sql-src">COPY (
+  SELECT d.month_name, ROUND(SUM(f.line_revenue), 0) AS revenue
+  FROM fct_order_line f
+  JOIN dim_date d ON f.date_key = d.date_key
+  WHERE f.status = 'completed'
+  GROUP BY d.month_name, d.month
+  ORDER BY d.month
+) TO 'board_pack.parquet' (FORMAT PARQUET);
+
+SELECT * FROM 'board_pack.parquet';</pre>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: WRAP ============ -->
+  <section class="section" id="wrap">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · where you are and where next</span>
+      <h2>What you can now do <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">You built a warehouse. Not a toy - the same architecture, in the same order, that a data team ships. The leader track (a1-a6) is the executive twin of what your hands just did: now you can both build it and explain why it earns its keep.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Where to go next<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>learn-data-engineering-with-phoebe</strong> - orchestration, pipelines, and getting this to run on a schedule instead of by hand.</li>
+          <li><strong>learn-dataops-with-phoebe</strong> - running the warehouse in production: testing, CI, monitoring, incident response.</li>
+          <li><strong>learn-data-modeling-with-phoebe</strong> - deeper Kimball: bus matrix, bridge tables, advanced dimensional patterns.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The honest gap list - what this course did not cover<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A warehouse in the wild has parts this course pointed at but did not build, by design:</p>
+        <ul>
+          <li><strong>Orchestration</strong> - Airflow, Dagster, or dbt scheduling that runs your scripts nightly. That is the data-engineering course.</li>
+          <li><strong>Permissions and governance</strong> - who can read which mart, PII controls, audit. That is the governance bucket.</li>
+          <li><strong>BI tools</strong> - Tableau, Power BI, Looker sitting on your marts. Your job ends at a clean, documented mart; theirs begins there.</li>
+        </ul>
+        <p>Knowing the edges of your job is itself a senior skill. You now know them.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Take it off the page <span class="tag exercise">◐ 45-60 min</span></h2>
+    </div>
+    <ul>
+      <li>Install DuckDB on your laptop (one binary, <code>duckdb.org</code>) and rebuild tonight's capstone in a local <code>.sql</code> file - the exact same SQL runs.</li>
+      <li>Swap Daybreak for your own domain: list your world's six source tables, name the grain of your fact, sketch two dimensions and one date dimension.</li>
+      <li>Write the one board question your team argues about most, and design the mart column that would end the argument.</li>
+      <li>Re-run your model script twice and prove the row counts do not change - your idempotency check from b6.</li>
+      <li>Pick your next course from the "where to go next" card and start it this week while the momentum is warm.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">The capstone mirrors the final projects of the courses this track drew on, run live on a real engine instead of a graded upload. Certificates and grading stay on the official platforms.</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals - Module 3 final project</span><span class="note">Whole session · source to staging to star to served answers, same shape</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - Capstone project</span><span class="note">Demos 1-3 · requirements to architecture to implementation</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DeepLearning.AI Data Engineering C4 - Capstone (ETL + modeling)</span><span class="note">Demos 1-2 · orchestration and visualization parts live in sibling courses</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What is the correct build order for the pipeline you assembled tonight?</p>
+      <button class="qopt" type="button">A · Marts, then staging, then the fact table</button>
+      <button class="qopt" type="button">B · Source, staging, dimensions + fact (star), marts, served answers</button>
+      <button class="qopt" type="button">C · Star schema first, then clean the source afterward</button>
+      <p class="qwhy">Data flows one way: raw source into typed staging, staging modeled into a star, the star sliced into marts, marts served to the board. Cleaning always comes before modeling.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why did Demo 2 rebuild the staging tables inside its own script?</p>
+      <button class="qopt" type="button">A · Because staging is faster the second time</button>
+      <button class="qopt" type="button">B · A bug in the engine forgets tables</button>
+      <button class="qopt" type="button">C · Each playground starts from a fresh database - self-contained, re-runnable scripts are the norm</button>
+      <p class="qwhy">Every Run resets the database, so a script must build everything it needs. That is the same idempotency property (b6) that lets a real pipeline safely re-run after a crash.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · The board pack defines revenue as completed orders only. Where should that definition live?</p>
+      <button class="qopt" type="button">A · Once, in the mart or served query - so every dashboard reuses the same rule</button>
+      <button class="qopt" type="button">B · In each analyst's head, applied by hand</button>
+      <button class="qopt" type="button">C · Wherever is convenient per dashboard</button>
+      <p class="qwhy">A metric defined once and reused is how two dashboards stop disagreeing - the one-truth lesson from leader session a3, enforced in the serving layer.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>The whole pipeline, one line per stage <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Source (given)</b><span>Raw OLTP tables - text dates, split revenue, mixed statuses. Never model on it directly.</span></div>
+      <div class="cheat-item"><b>Staging (b2)</b><span>Typed, renamed, quality-gated copies. stg_ prefix. Reconcile counts, scan nulls, check freshness.</span></div>
+      <div class="cheat-item"><b>Dimensions (b4)</b><span>Surrogate keys via row_number(). dim_date from generate_series. Conformed - shared by every fact.</span></div>
+      <div class="cheat-item"><b>Fact (b3)</b><span>One row = one order line (the grain). Measures + dimension keys. Join staging to dim keys.</span></div>
+      <div class="cheat-item"><b>History (b5)</b><span>SCD Type 2: close the old row (valid_to, is_current=FALSE), insert the new. History stays true.</span></div>
+      <div class="cheat-item"><b>Loading (b6)</b><span>ELT + incremental + MERGE. Idempotent scripts survive the re-run after a crash.</span></div>
+      <div class="cheat-item"><b>Marts + serving (b7)</b><span>Per-team slices. Define each metric ONCE. A mart is a documented promise.</span></div>
+      <div class="cheat-item"><b>Fast + portable (b8-b9)</b><span>Name your columns, prune, pre-aggregate hot dashboards. Export to Parquet for a shippable pack.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 10 of 10 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b9-lakehouse-modern-stack.html">← Prev: Lakehouse and the modern stack</a> &nbsp;·&nbsp; <a href="../index.html">Back to all sessions →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/dw-seed.js?v=1"></script>
+<script src="../assets/warehouse-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 6 · Loading patterns - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Builder session 6 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Builder track · Session 6 of 10</div>
+    <h1><span class="accent">Loading</span> patterns</h1>
+    <p class="sub">Daybreak's warehouse has shape - staging, a star, history-keeping dimensions. Tonight it gets a heartbeat. New orders land every day, and someone (you) has to move them in: ETL or ELT, full reload or incremental, and above all safely re-runnable - because your pipeline WILL crash mid-run one night, and the difference between a shrug and a all-hands incident is how you loaded.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · DE · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-20 · ETL/ELT &amp; incremental</span>
+      <span class="a3" style="flex:5">20-42 · Build-along: MERGE loads, twice</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the build stands</h2>
+    </div>
+    <p class="lede">The Daybreak warehouse so far: a typed <strong>staging layer</strong> (b2), a <strong>star schema</strong> with <code>fct_order_line</code> and three dimensions (b3-b4), and a Type 2 customer dimension that keeps history honest (b5). Everything you built used <code>CREATE TABLE AS</code> over a frozen snapshot. Real warehouses do not get frozen snapshots - they get tonight's batch, every night, forever. Loading patterns are the difference between a warehouse and a one-off analysis.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live warehouse - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The ETL vs ELT distinction (and why the industry flipped), the full-reload vs incremental trade, and the one property that separates professional pipelines from hopeful ones: idempotency - proven live by running the same MERGE twice and watching nothing double-count.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: ETL VS ELT ============ -->
+  <section class="section" id="etl-elt">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers IBM DW Fundamentals M2 populate labs, 365DS S5 ETL, DLAI C4 dbt demos</span>
+      <h2>ETL vs ELT: where does transform run? <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">Every load answers three verbs: <strong>Extract</strong> data out of the source, <strong>Transform</strong> it into warehouse shape, <strong>Load</strong> it in. The only real question is the order of the last two - where the transform happens. That one choice defines two eras of data engineering.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ETL transforms outside the warehouse; ELT loads raw and transforms inside with SQL">
+        <style>
+          .elH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .elT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .elS { font: 600 11.5px Inter, sans-serif; fill: #FFFFFF; }
+          .elC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .elN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .elArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#elAh); }
+        </style>
+        <defs>
+          <marker id="elAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="elH" x="40" y="34">ETL · the old default (warehouse compute was scarce)</text>
+        <rect x="40" y="50" width="150" height="40" rx="8" fill="#26435C"/>
+        <text class="elT" x="58" y="74">Source (OLTP)</text>
+        <rect x="270" y="50" width="220" height="40" rx="8" fill="#3E6B8F"/>
+        <text class="elT" x="288" y="68">Transform server</text>
+        <text class="elS" x="288" y="84">outside · custom code</text>
+        <rect x="570" y="50" width="270" height="40" rx="8" fill="#5E8CB0"/>
+        <text class="elT" x="588" y="68">Warehouse</text>
+        <text class="elS" x="588" y="84">receives clean data only</text>
+        <path class="elArr" d="M190,70 C220,70 235,70 266,70"/>
+        <path class="elArr" d="M490,70 C520,70 535,70 566,70"/>
+        <text class="elC" x="40" y="118">Raw data never lands. Debugging means re-extracting. Transform logic lives in a separate system.</text>
+
+        <text class="elH" x="40" y="158">ELT · the cloud default (warehouse compute got cheap)</text>
+        <rect x="40" y="174" width="150" height="40" rx="8" fill="#26435C"/>
+        <text class="elT" x="58" y="198">Source (OLTP)</text>
+        <rect x="270" y="174" width="570" height="70" rx="8" fill="#EDF3F8" stroke="#E3EAF0"/>
+        <text class="elC" x="288" y="196">Warehouse - everything after extract happens in here, in SQL</text>
+        <rect x="288" y="206" width="110" height="28" rx="6" fill="#3E6B8F"/>
+        <text class="elS" x="300" y="224">raw / landed</text>
+        <rect x="438" y="206" width="110" height="28" rx="6" fill="#3E6B8F"/>
+        <text class="elS" x="450" y="224">staging (b2)</text>
+        <rect x="588" y="206" width="110" height="28" rx="6" fill="#5E8CB0"/>
+        <text class="elS" x="600" y="224">star (b3-b4)</text>
+        <path class="elArr" d="M190,194 C220,194 235,194 266,194"/>
+        <path class="elArr" d="M398,220 C412,220 420,220 434,220"/>
+        <path class="elArr" d="M548,220 C562,220 570,220 584,220"/>
+        <text class="elC" x="40" y="272">Raw lands first, so every step is inspectable and re-runnable with a query. Transforms are just SQL.</text>
+
+        <rect x="40" y="294" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="elN" x="64" y="306">Your b2-b4 CTAS scripts were ELT all along. Cheap columnar compute flipped the whole industry this way.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - same three verbs, opposite homes for the T</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>You have been doing ELT since b2<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Surprise: this course never taught you ETL, because you never needed it. The raw Daybreak tables land in the engine untouched, and every layer - staging, dimensions, facts - is a SQL transform running <em>inside</em> the warehouse. That is the whole ELT idea, and here it is in one breath:</p>
+        <div class="sqlbox" data-caption="Extract already happened (raw tables landed). This is the L-then-T: transform in-warehouse, in SQL." data-setup="staging">
+          <pre class="sql-src">CREATE OR REPLACE TABLE monthly_revenue AS
+SELECT strftime(o.order_date, '%Y-%m') AS month,
+       ROUND(SUM(oi.line_amount), 2) AS revenue
+FROM stg_orders o
+JOIN stg_order_items oi USING (order_id)
+WHERE o.status = 'completed'
+GROUP BY month;
+
+SELECT * FROM monthly_revenue ORDER BY month;</pre>
+        </div>
+        <ul>
+          <li><strong>ETL wins</strong> when data must be cleaned or masked <em>before</em> it may land anywhere (strict PII regimes), or when the target engine is weak.</li>
+          <li><strong>ELT wins</strong> almost everywhere else: raw is preserved for audit and re-processing, transforms are versionable SQL, and the warehouse's own horsepower does the lifting.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>dbt in one honest paragraph<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Once a team runs dozens of in-warehouse SQL transforms, managing them by hand collapses. <strong>dbt</strong> is the tool that grew to fill that gap: each of your CTAS scripts becomes a "model" file, dbt figures out the dependency order, runs them, <em>tests</em> them (unique keys, no NULLs, accepted values), and generates docs and lineage automatically. The DeepLearning.AI course demos it; the mental model you need tonight is simply "dbt industrializes what I just did by hand." Depth belongs to a data-engineering course - here it is one card, on purpose.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: FULL VS INCREMENTAL ============ -->
+  <section class="section" id="full-incremental">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · full reload vs incremental</span>
+      <h2>Full reload or incremental? <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">Tonight's batch arrives. Do you rebuild the whole fact table from scratch, or move only what changed? Both are legitimate. The trade is <strong>simplicity versus cost</strong>, and the honest answer changes as the data grows.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Full reload rebuilds everything nightly; incremental moves only rows past the watermark">
+        <style>
+          .fiH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .fiT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .fiS { font: 600 11.5px Inter, sans-serif; fill: #FFFFFF; }
+          .fiC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .fiN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .fiArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#fiAh); }
+        </style>
+        <defs>
+          <marker id="fiAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="fiH" x="40" y="34">Full reload · drop and rebuild, every night</text>
+        <rect x="40" y="50" width="130" height="36" rx="8" fill="#26435C"/>
+        <text class="fiT" x="56" y="73">All source</text>
+        <path class="fiArr" d="M170,68 C200,68 215,68 246,68"/>
+        <rect x="250" y="50" width="240" height="36" rx="8" fill="#3E6B8F"/>
+        <text class="fiS" x="264" y="73">CREATE OR REPLACE TABLE fct ...</text>
+        <path class="fiArr" d="M490,68 C520,68 535,68 566,68"/>
+        <rect x="570" y="50" width="180" height="36" rx="8" fill="#5E8CB0"/>
+        <text class="fiT" x="586" y="73">Fresh fact table</text>
+        <text class="fiC" x="40" y="112">Simple and self-healing: any past mistake is erased by tonight's rebuild. Cost grows with ALL history -</text>
+        <text class="fiC" x="40" y="130">fine at 53 rows, brutal at 5 billion. Batch window: the whole table is rebuilt whether 1 row changed or none.</text>
+
+        <text class="fiH" x="40" y="172">Incremental · move only what is new or changed</text>
+        <rect x="40" y="188" width="130" height="36" rx="8" fill="#26435C"/>
+        <text class="fiT" x="56" y="211">Source</text>
+        <rect x="250" y="188" width="240" height="36" rx="8" fill="#F59E0B"/>
+        <text class="fiS" x="264" y="204" fill="#3D2800">watermark: rows past</text>
+        <text class="fiS" x="264" y="219" fill="#3D2800">max(date_key), or MERGE on keys</text>
+        <path class="fiArr" d="M170,206 C200,206 215,206 246,206"/>
+        <path class="fiArr" d="M490,206 C520,206 535,206 566,206"/>
+        <rect x="570" y="188" width="180" height="36" rx="8" fill="#5E8CB0"/>
+        <text class="fiT" x="586" y="211">Fact table, patched</text>
+        <text class="fiC" x="40" y="250">Cheap and fast: cost grows with the CHANGE, not the history. Needs care: a watermark or a merge key,</text>
+        <text class="fiC" x="40" y="268">plus a plan for late-arriving rows (yesterday's order landing tonight - MERGE by key absorbs them).</text>
+
+        <rect x="40" y="292" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="fiN" x="64" y="304">Rule of thumb: start full, stay full while you can. Go incremental when the bill or the batch window says so.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - rebuild everything vs patch the difference</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Watermarks, late arrivals, and the batch window<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Watermark:</strong> the highest value already loaded - usually <code>max(date_key)</code> or a max updated-at timestamp. Tonight's extract asks the source only for rows past it.</li>
+          <li><strong>Late-arriving data:</strong> an order from Tuesday that reaches you Thursday. A naive date watermark skips it forever; a MERGE keyed on business keys absorbs it whenever it shows up. This is the main reason MERGE beats plain INSERT for incremental loads.</li>
+          <li><strong>Batch window:</strong> the hours (often overnight) when the load must finish before dashboards wake up. Full reloads eat the window as history grows; incremental loads keep it flat.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The 6am cliff.</strong> A retailer's full nightly rebuild took 40 minutes in year one, 5 hours in year three, and one Black Friday it was still running when the 6am dashboards opened - empty. The migration to incremental MERGE loads was scheduled that same week. Growth converts "simple and correct" into "simple and late".</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: IDEMPOTENCY ============ -->
+  <section class="section" id="idempotency">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the re-run property</span>
+      <h2>Idempotency: design for the re-run <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">A load is <strong>idempotent</strong> when running it twice leaves the warehouse in exactly the same state as running it once. It sounds academic until 2am, when the pipeline dies halfway through and the on-call question is: <em>"can I just run it again?"</em> If the answer is yes, the incident is a shrug. If the answer is "maybe, but revenue might double", the incident has a postmortem.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why plain INSERT fails the 2am test<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Picture the crash: tonight's batch INSERTs 500 of 1,000 rows, then the connection drops. Re-run the whole batch and the first 500 rows land <em>twice</em> - revenue double-counts, and worse, it double-counts <em>silently</em>. The pattern that survives the crash:</p>
+        <ul>
+          <li><strong>Key every target row</strong> by its business identity - for <code>fct_order_line</code>, the pair <code>(order_id, product_key)</code> names one line exactly once.</li>
+          <li><strong>MERGE, not INSERT:</strong> rows already present get updated (or left alone), rows missing get inserted. Replaying a half-finished batch simply completes it.</li>
+          <li><strong>Same idea, coarser grain:</strong> delete-then-insert the affected date partition, or full reload. All three are idempotent; MERGE is the finest-grained.</li>
+        </ul>
+        <p>Demo 2 does not ask you to trust this - you will run the same load twice and count the rows yourself.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Tonight's batch, loaded incrementally <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Tonight's batch from the Daybreak app carries three rows: two brand-new order lines (orders 1034 and 1035) and one <strong>correction</strong> - order 1032's line was refunded this afternoon. One MERGE, keyed on <code>(order_id, product_key)</code>, handles all three.</p>
+
+    <div class="steps">
+      <div class="step"><p>Read the batch in the USING clause: it is just VALUES - in production this would be tonight's extract or a staging table, same shape.</p></div>
+      <div class="step"><p>Read the ON clause: <code>(order_id, product_key)</code> is the business identity of a fact row. MERGE checks each batch row against it.</p></div>
+      <div class="step"><p>Trace each row's fate: 1034 and 1035 find no match - INSERT. 1032's line finds its match - UPDATE flips its status to refunded. No row is ever written twice.</p></div>
+      <div class="step"><p>Run it. The result shows the three touched rows plus the counts: 53 rows before, 55 after - two inserts, one in-place update.</p></div>
+    </div>
+
+    <div class="sqlbox" data-caption="One MERGE, three fates: two inserts, one update. Fresh warehouse every Run, so replay freely." data-setup="star">
+      <pre class="sql-src">CREATE TABLE cnt_before AS
+SELECT count(*) AS n FROM fct_order_line;
+
+MERGE INTO fct_order_line t
+USING (
+  SELECT * FROM (VALUES
+    (9, 2, DATE '2026-06-28', 1034, 2, 18.00, 36.00, 'completed', 'app'),
+    (4, 5, DATE '2026-06-29', 1035, 1, 28.00, 28.00, 'completed', 'web'),
+    (1, 1, DATE '2026-06-16', 1032, 3, 16.00, 48.00, 'refunded',  'web')
+  ) v(customer_key, product_key, date_key, order_id,
+      quantity, unit_price, line_revenue, status, channel)
+) src
+ON t.order_id = src.order_id AND t.product_key = src.product_key
+WHEN MATCHED THEN
+  UPDATE SET status = src.status
+WHEN NOT MATCHED THEN
+  INSERT VALUES (src.customer_key, src.product_key, src.date_key,
+                 src.order_id, src.quantity, src.unit_price,
+                 src.line_revenue, src.status, src.channel);
+
+SELECT f.order_id, f.product_key, f.date_key, f.line_revenue, f.status,
+       b.n AS rows_before,
+       (SELECT count(*) FROM fct_order_line) AS rows_after
+FROM fct_order_line f, cnt_before b
+WHERE f.order_id IN (1032, 1034, 1035)
+ORDER BY f.order_id;</pre>
+    </div>
+
+    <div class="callout tip">
+      <strong>Late-arrival bonus.</strong> Notice the batch is allowed to contain order 1032 from June 16 - twelve days "late" - and nothing breaks. Key-based MERGE does not care when a row arrives, only what it is. A pure date watermark would have missed it.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>The idempotency proof - then break it <span class="tag demo">★ 10 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Claims are cheap; counts are not. This script runs the exact same MERGE <strong>twice in a row</strong> - simulating the 2am "just run it again" - and lets the row counts testify.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Run the same load twice, count the damage: zero<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="sqlbox" data-caption="Same MERGE, back to back. After-first 55, after-second 55, exactly one copy of order 1034. That is idempotency." data-setup="star">
+          <pre class="sql-src">MERGE INTO fct_order_line t
+USING (SELECT * FROM (VALUES
+    (9, 2, DATE '2026-06-28', 1034, 2, 18.00, 36.00, 'completed', 'app'),
+    (4, 5, DATE '2026-06-29', 1035, 1, 28.00, 28.00, 'completed', 'web')
+  ) v(customer_key, product_key, date_key, order_id,
+      quantity, unit_price, line_revenue, status, channel)) src
+ON t.order_id = src.order_id AND t.product_key = src.product_key
+WHEN MATCHED THEN UPDATE SET status = src.status
+WHEN NOT MATCHED THEN
+  INSERT VALUES (src.customer_key, src.product_key, src.date_key,
+                 src.order_id, src.quantity, src.unit_price,
+                 src.line_revenue, src.status, src.channel);
+
+CREATE TABLE after_first AS
+SELECT count(*) AS n FROM fct_order_line;
+
+MERGE INTO fct_order_line t
+USING (SELECT * FROM (VALUES
+    (9, 2, DATE '2026-06-28', 1034, 2, 18.00, 36.00, 'completed', 'app'),
+    (4, 5, DATE '2026-06-29', 1035, 1, 28.00, 28.00, 'completed', 'web')
+  ) v(customer_key, product_key, date_key, order_id,
+      quantity, unit_price, line_revenue, status, channel)) src
+ON t.order_id = src.order_id AND t.product_key = src.product_key
+WHEN MATCHED THEN UPDATE SET status = src.status
+WHEN NOT MATCHED THEN
+  INSERT VALUES (src.customer_key, src.product_key, src.date_key,
+                 src.order_id, src.quantity, src.unit_price,
+                 src.line_revenue, src.status, src.channel);
+
+SELECT (SELECT n FROM after_first) AS rows_after_first_run,
+       count(*) AS rows_after_second_run,
+       (SELECT count(*) FROM fct_order_line
+        WHERE order_id = 1034) AS copies_of_1034
+FROM fct_order_line;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Your turn: break it on purpose<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Now be the naive pipeline: swap MERGE for plain INSERT and replay the batch. Two copies of order 1034, and its 36.00 counted as 72.00. This is the exact bug that idempotency exists to make impossible.</p>
+        <div class="sqlbox" data-caption="The anti-pattern, on purpose: replayed INSERT double-counts. Say 'copies: 2' out loud and never forget it." data-setup="star">
+          <pre class="sql-src">INSERT INTO fct_order_line VALUES
+  (9, 2, DATE '2026-06-28', 1034, 2, 18.00, 36.00, 'completed', 'app');
+
+INSERT INTO fct_order_line VALUES
+  (9, 2, DATE '2026-06-28', 1034, 2, 18.00, 36.00, 'completed', 'app');
+
+SELECT order_id,
+       count(*) AS copies,
+       SUM(line_revenue) AS revenue_counted
+FROM fct_order_line
+WHERE order_id = 1034
+GROUP BY order_id;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The watermark pattern in one query<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Incremental extraction starts by asking the warehouse what it already has. <code>max(date_key)</code> is the high-water mark; the source is then asked only for rows past it. Tonight the answer is zero new orders - the warehouse is caught up. Tomorrow it will not be.</p>
+        <div class="sqlbox" data-caption="Step 1 of every incremental load: find the watermark, count what the source holds beyond it." data-setup="star">
+          <pre class="sql-src">SELECT (SELECT max(date_key) FROM fct_order_line) AS high_water_mark,
+       count(*) AS source_rows_past_watermark
+FROM stg_orders
+WHERE order_date > (SELECT max(date_key) FROM fct_order_line);</pre>
+        </div>
+        <p>Caveat from Part 2: a date watermark alone misses late arrivals. Production incremental loads typically pair a generous watermark (for cheap extraction) with a keyed MERGE (for correct landing).</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Extend Demo 1's batch with a row that changes order 1034's quantity from 2 to 3 - you will need the UPDATE branch to set more than status. (Update quantity and line_revenue together, or the row lies.)</li>
+      <li>Write the full-reload version of the fact load as one CTAS over staging (b4's script is your template) and time it against the MERGE. At Daybreak's size, full reload wins on simplicity - say out loud when that flips.</li>
+      <li>Classify three pipelines at work (or imagine them): ETL or ELT? Full or incremental? Idempotent - would you dare re-run each one at 2am?</li>
+      <li>Design the merge key for a fact table of website events (customer, url, timestamp). Harder than it looks - write down what makes an event row unique, and what happens if two identical events are both real.</li>
+      <li>Bring your answer to b7, where the loaded warehouse finally starts serving the business.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This track teaches the working core of the major data-warehousing curricula, run on a live engine instead of slides. Certificates, graded labs, and videos stay on the official platforms. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">IBM Data Warehouse Fundamentals (Coursera) - M2: populating the warehouse</span><span class="note">Demos 1-2 · the live twin of IBM's populate labs, on MERGE</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - S5: ETL, loading &amp; automation</span><span class="note">Parts 1-3 · ETL/ELT, full vs incremental, re-runnable loads</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">DeepLearning.AI Data Engineering C4 (Joe Reis) - M1: dbt &amp; transformation tooling</span><span class="note">Part 1 self-study card · one honest paragraph; depth belongs to a DE course</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Why did the industry largely flip from ETL to ELT?</p>
+      <button class="qopt" type="button">A · Transform servers became illegal under GDPR</button>
+      <button class="qopt" type="button">B · Cloud warehouses made in-warehouse compute cheap, so loading raw first and transforming in SQL became simpler and auditable</button>
+      <button class="qopt" type="button">C · ELT is always faster than ETL on every workload</button>
+      <p class="qwhy">Columnar cloud engines turned the warehouse into the strongest computer in the room. Land raw, keep it for audit and replay, transform with versionable SQL inside - exactly what your CTAS layers have done since b2.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · A load is idempotent when...</p>
+      <button class="qopt" type="button">A · It finishes inside the batch window</button>
+      <button class="qopt" type="button">B · It never needs to be re-run</button>
+      <button class="qopt" type="button">C · Running it twice leaves the warehouse in the same state as running it once</button>
+      <p class="qwhy">The property is about the END STATE under replay. Crashes guarantee re-runs will happen; idempotent design (MERGE on business keys, or partition replace) makes the re-run boring instead of a double-counting incident.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · In tonight's MERGE, what happens to a batch row on match vs no match?</p>
+      <button class="qopt" type="button">A · Match: the existing row is UPDATEd in place. No match: the batch row is INSERTed as new</button>
+      <button class="qopt" type="button">B · Match: the batch row is skipped. No match: the batch row raises an error</button>
+      <button class="qopt" type="button">C · Match: the existing row is deleted. No match: nothing happens</button>
+      <p class="qwhy">MERGE checks each source row against the ON keys - (order_id, product_key) here. WHEN MATCHED updates the existing fact row (the 1032 correction); WHEN NOT MATCHED inserts it (1034, 1035). One statement, both fates.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 6 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>ETL vs ELT</b><span>Same three verbs; the question is where transform runs. ELT = load raw, transform in-warehouse with SQL. The cloud default.</span></div>
+      <div class="cheat-item"><b>dbt</b><span>Industrializes ELT: your CTAS scripts as tested, versioned, documented models with automatic dependency order.</span></div>
+      <div class="cheat-item"><b>Full reload</b><span>Drop and rebuild nightly. Simple, correct, self-healing - and cost grows with all of history. Start here.</span></div>
+      <div class="cheat-item"><b>Incremental</b><span>Move only new/changed rows. Cost grows with the change. Needs a watermark or merge key, and a late-arrival plan.</span></div>
+      <div class="cheat-item"><b>Watermark</b><span>max(date_key) or max updated-at already loaded; extract only past it. Pair with MERGE - dates alone miss late rows.</span></div>
+      <div class="cheat-item"><b>Idempotency</b><span>Run twice = same state as once. The 2am test: "can I just run it again?" Design so the answer is always yes.</span></div>
+      <div class="cheat-item"><b>MERGE</b><span>ON business keys; WHEN MATCHED update, WHEN NOT MATCHED insert. The idempotent workhorse of incremental loading.</span></div>
+      <div class="cheat-item"><b>Plain INSERT replayed</b><span>Double-counts silently - you proved it live (copies: 2, revenue doubled). Never ship it as a load.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 6 of 10 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b5-scd-in-practice.html">← Prev: Slowly changing dimensions</a> &nbsp;·&nbsp; <a href="b7-marts-serving.html">Next: Marts and serving →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/dw-seed.js?v=1"></script>
+<script src="../assets/warehouse-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

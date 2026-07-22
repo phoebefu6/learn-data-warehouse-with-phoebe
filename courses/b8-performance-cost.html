@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 8 · Performance and cost - learn data warehouse with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-data-warehouse-with-phoebe</a> / Builder session 8 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Data Warehouse with Phoebe · Builder track · Session 8 of 10</div>
+    <h1><span class="accent">Performance</span> and cost</h1>
+    <p class="sub">Daybreak's warehouse works - staging, star, history, loads, marts, all live. Now the founder's dashboard runs forty times a day and the cloud bill has opinions. Tonight you learn the single move behind every warehouse optimization: <strong>scan less</strong>. Less scanned means faster answers AND a smaller invoice - the same trick pays twice, and you will time it yourself on 300,000 rows.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · DE · DS · PMs</span>
+      <span class="chip audience">Runs in your browser · DuckDB</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-16 · Pruning &amp; the cost model</span>
+      <span class="a3" style="flex:5">16-40 · Build-along: time it yourself</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where the build stands</h2>
+    </div>
+    <p class="lede">Seven sessions in, Daybreak has the full stack: typed staging tables (b2), a star schema with <code>dim_date</code>, <code>dim_customer</code>, <code>dim_product</code> and <code>fct_order_line</code> (b3-b4), history via SCD2 (b5), safe incremental loads with MERGE (b6), and team-facing marts (b7). Everything is correct. Tonight is about making it <strong>fast and cheap</strong> - because in a cloud warehouse those are the same property: bytes scanned. The millisecond counter under every playground on this page is your measuring stick.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">▶ Live warehouse - editable &amp; runnable</span>
+      <span class="pill inkpill">Official sources covered</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The three pruning moves (column, partition, clustering), how Snowflake and BigQuery implement them under the hood, the warehouse cost model in one sentence (storage is pennies, scans are dollars), and a timed proof that a pre-aggregated summary table beats a 300k-row scan for a dashboard that runs forty times a day.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: SCAN LESS ============ -->
+  <section class="section" id="scan-less">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers 365DS S3 partitioning, indexing &amp; query performance</span>
+      <h2>Scan less, pay less: the whole art <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Every warehouse optimization you will ever meet is one idea wearing different hats: <strong>arrange the data so the engine can skip most of it</strong>. Three hats matter. <strong>Column pruning</strong>: ask for 2 columns and a columnar engine reads 2 - you learned this in b1. <strong>Partition pruning</strong>: filter on the date and the engine skips every foreign month entirely. <strong>Clustering</strong>: sort the data so rows that get filtered together sit together, letting whole blocks be skipped even mid-partition.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A query on 300k rows is pruned first by partition, then by column, before the engine computes the answer">
+        <style>
+          .pfH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .pfT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .pfS { font: 600 12px Inter, sans-serif; fill: #FFFFFF; }
+          .pfC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .pfN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+          .pfArr { stroke: #A5C2D8; stroke-width: 2; fill: none; marker-end: url(#pfAh); }
+        </style>
+        <defs>
+          <marker id="pfAh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#A5C2D8"/>
+          </marker>
+        </defs>
+        <text class="pfH" x="40" y="34">One query, two prunes, tiny scan</text>
+
+        <rect x="40" y="60" width="220" height="86" rx="8" fill="#26435C"/>
+        <text class="pfT" x="56" y="88">big_orders</text>
+        <text class="pfS" x="56" y="110">300,000 rows</text>
+        <text class="pfS" x="56" y="130">7 columns</text>
+
+        <path class="pfArr" d="M260,103 C282,103 292,103 312,103"/>
+
+        <rect x="314" y="60" width="220" height="86" rx="8" fill="#3E6B8F"/>
+        <text class="pfT" x="330" y="88">partition prune</text>
+        <text class="pfS" x="330" y="110">WHERE March 2026</text>
+        <text class="pfS" x="330" y="130">~39,000 rows survive</text>
+
+        <path class="pfArr" d="M534,103 C556,103 566,103 586,103"/>
+
+        <rect x="588" y="60" width="220" height="86" rx="8" fill="#5E8CB0"/>
+        <text class="pfT" x="604" y="88">column prune</text>
+        <text class="pfS" x="604" y="110">reads 4 of 7 columns</text>
+        <text class="pfS" x="604" y="130">date, channel, qty, price</text>
+
+        <path class="pfArr" d="M698,146 C698,170 698,180 698,196"/>
+
+        <rect x="588" y="198" width="220" height="54" rx="8" fill="#F59E0B"/>
+        <text class="pfN" x="604" y="222">answer</text>
+        <text class="pfN" x="604" y="241">2 rows: web vs app revenue</text>
+
+        <text class="pfC" x="40" y="190">clustering = sort by the filter column, so surviving rows</text>
+        <text class="pfC" x="40" y="208">sit in contiguous blocks instead of scattered everywhere</text>
+
+        <rect x="40" y="280" width="800" height="1" fill="#E3EAF0"/>
+        <rect x="40" y="298" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="pfN" x="64" y="310">Net effect: over 90% of the table's bytes never leave disk. That is the entire discipline.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the pruning funnel every fast warehouse query rides through</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The three prunes, one at a time<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Column pruning</strong> - free with columnar storage. <code>SELECT channel, SUM(quantity * unit_price)</code> touches 3 columns; the other 4 stay on disk. You control it by never writing <code>SELECT *</code>.</li>
+          <li><strong>Partition pruning</strong> - the table is physically split by a key, almost always the date. <code>WHERE order_date</code> in March means January's files are never opened. You control it by always filtering on the partition column, and by choosing that column well when you create the table.</li>
+          <li><strong>Clustering</strong> - within what survives, sorted data lets the engine skip blocks using min/max metadata. A table clustered by <code>channel</code> answers channel filters by opening only the matching stretch. You control it with a clustering key (cloud) or an ORDER BY at build time (DuckDB, Parquet).</li>
+        </ul>
+        <div class="callout tip">
+          <strong>The order of leverage.</strong> Partition pruning usually saves the most (whole months skipped), column pruning is automatic if your SQL names columns, clustering is the finisher for big high-cardinality tables. When a query is slow, check them in that order.
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why warehouses mostly do NOT use indexes<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Coming from OLTP, the reflex is "slow query? add an index". Warehouses mostly skip b-tree indexes, and it is worth saying why out loud:</p>
+        <ul>
+          <li><strong>B-trees excel at finding a few rows.</strong> Analytics reads millions of rows and aggregates them - hopping through an index row by row is slower than a straight columnar scan.</li>
+          <li><strong>Zonemaps do the useful part for free.</strong> Min/max metadata per block (which DuckDB, Snowflake and Parquet all keep automatically) already lets filters skip blocks - that is index-like skipping without index maintenance.</li>
+          <li><strong>Indexes tax every load.</strong> Warehouses ingest in bulk; keeping b-trees fresh on billion-row tables costs more than it saves.</li>
+        </ul>
+        <p>So the warehouse answer to "make it fast" is layout (partition, cluster, summarize), not indexes. If you ever meet a warehouse column named <code>..._idx</code>, be suspicious - someone brought OLTP habits to an OLAP party.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: CLOUD ENGINES + COST ============ -->
+  <section class="section" id="cloud-engines">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers LinkedIn "Advanced Snowflake" topics - micropartitions, clustering, table types</span>
+      <h2>How the cloud engines do it - and what they charge <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">The pruning funnel is universal; each cloud engine just gives it a brand name. <strong>Snowflake</strong> slices every table into <em>micropartitions</em> (~16 MB compressed blocks) and stores min/max metadata for every column of every block - filters consult the metadata and skip whole blocks. <strong>BigQuery</strong> asks you to declare a partition column (usually date) plus up to four clustering keys. <strong>DuckDB</strong>, your in-browser engine, keeps <em>zonemaps</em> - the same min/max trick - per row group. Different names, one idea.</p>
+    <p class="lede"><em>Honesty note: this part is verified at topic level against the LinkedIn Learning outline - re-verify block sizes and current behavior in the vendor docs before you tune a production system. These numbers move.</em></p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Blocks with min and max date metadata let a March filter skip every non-March block without reading it">
+        <style>
+          .zmH { font: 700 15px Inter, sans-serif; fill: #1C2833; }
+          .zmB { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #FFFFFF; }
+          .zmI { font: 600 11.5px "SF Mono", Menlo, monospace; fill: #1C2833; }
+          .zmC { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+          .zmN { font: 600 13px Inter, sans-serif; fill: #3D2800; }
+        </style>
+        <text class="zmH" x="40" y="34">Query: WHERE order_date in March 2026 - the engine reads metadata first</text>
+
+        <rect x="40" y="60" width="190" height="66" rx="8" fill="#A5C2D8"/>
+        <text class="zmI" x="54" y="84">block 1</text>
+        <text class="zmI" x="54" y="102">min Nov 01</text>
+        <text class="zmI" x="54" y="118">max Dec 04</text>
+
+        <rect x="246" y="60" width="190" height="66" rx="8" fill="#A5C2D8"/>
+        <text class="zmI" x="260" y="84">block 2</text>
+        <text class="zmI" x="260" y="102">min Dec 04</text>
+        <text class="zmI" x="260" y="118">max Feb 22</text>
+
+        <rect x="452" y="60" width="190" height="66" rx="8" fill="#F59E0B"/>
+        <text class="zmI" x="466" y="84">block 3</text>
+        <text class="zmI" x="466" y="102">min Feb 22</text>
+        <text class="zmI" x="466" y="118">max Apr 15</text>
+
+        <rect x="658" y="60" width="182" height="66" rx="8" fill="#A5C2D8"/>
+        <text class="zmI" x="672" y="84">block 4</text>
+        <text class="zmI" x="672" y="102">min Apr 15</text>
+        <text class="zmI" x="672" y="118">max Jun 30</text>
+
+        <text class="zmC" x="40" y="152">skipped - March cannot be here</text>
+        <text class="zmC" x="452" y="152">read - March overlaps this block's min/max range</text>
+
+        <rect x="40" y="176" width="800" height="1" fill="#E3EAF0"/>
+        <text class="zmH" x="40" y="206">Brand names for this exact picture</text>
+        <rect x="40" y="220" width="250" height="28" rx="6" fill="#26435C"/>
+        <text class="zmB" x="52" y="239">Snowflake: micropartitions</text>
+        <rect x="304" y="220" width="270" height="28" rx="6" fill="#3E6B8F"/>
+        <text class="zmB" x="316" y="239">BigQuery: partition + cluster</text>
+        <rect x="588" y="220" width="200" height="28" rx="6" fill="#5E8CB0"/>
+        <text class="zmB" x="600" y="239">DuckDB: zonemaps</text>
+        <rect x="40" y="272" width="14" height="14" rx="3" fill="#F59E0B"/>
+        <text class="zmN" x="64" y="284">Sorted data = tight min/max ranges = more blocks skipped. That is why clustering works.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - min/max metadata per block: the mechanism behind every "skip" on this page</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The cost model: storage is pennies, scans are dollars<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Cloud warehouse pricing splits into two very unequal halves. <strong>Storage</strong> is object-store cheap - roughly coffee money per terabyte per month. <strong>Compute</strong> is where the bill lives: BigQuery bills per byte scanned, Snowflake bills per second a virtual warehouse runs. Either way, the invoice is a function of how much data your queries touch.</p>
+        <ul>
+          <li><strong>Consequence 1: copies are cheap, scans are not.</strong> Keeping a summary table costs almost nothing to store; recomputing the same aggregate 40 times a day costs real money.</li>
+          <li><strong>Consequence 2: materialized views are "compute once".</strong> A materialized view stores a query's result and serves it repeatedly - the warehouse refreshes it when sources change. Your <code>daily_summary</code> table in Demo 2 is the hand-rolled version of the same trade.</li>
+          <li><strong>Consequence 3: the pruning funnel IS cost control.</strong> Every block skipped is a block not billed. Performance work and cost work are the same work.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The $10,000 SELECT *.</strong> A BI tool pointed at a wide raw table, refreshing hourly with <code>SELECT *</code>, is the classic cloud-bill horror story. The fix is never "negotiate the contract" - it is a summary table and named columns. One afternoon of b8-style work routinely cuts warehouse bills in half.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: READING A PLAN ============ -->
+  <section class="section" id="reading-plans">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · your x-ray: EXPLAIN</span>
+      <h2>Reading a query plan <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">You do not have to guess whether pruning happened - the engine will tell you. Prefix any query with <code>EXPLAIN</code> and it prints the physical plan instead of running it. You are looking for two things: the scan node showing <strong>which columns</strong> it projects, and the <strong>filter sitting inside or next to the scan</strong> (that is "filter pushdown" - the filter applied during the scan, not after it).</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>X-ray a filtered aggregate<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Run it as written, then read bottom-up: the scan on <code>big_orders</code> lists only the columns the query needs, and the date filter is pushed down to the scan itself. Then delete the <code>EXPLAIN</code> keyword and run again to see the real result.</p>
+        <div class="sqlbox" data-setup="big" data-caption="Plans read bottom-up: scan first, then aggregate. Spot the filter riding inside the scan.">
+          <pre class="sql-src">EXPLAIN
+SELECT channel,
+       ROUND(SUM(quantity * unit_price), 0) AS march_revenue
+FROM big_orders
+WHERE order_date &gt;= DATE '2026-03-01'
+  AND order_date &lt; DATE '2026-04-01'
+GROUP BY channel;</pre>
+        </div>
+        <div class="callout tip">
+          <strong>When to reach for EXPLAIN.</strong> Any time a query is slower than its siblings, or before you ship a query a dashboard will run all day. If the plan shows the filter applied AFTER a full scan (or no projection list), you found your problem - usually a function wrapped around the partition column, like <code>WHERE strftime(order_date, '%Y-%m') = '2026-03'</code>, which can defeat pushdown.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Feel the pruning: three timed variants <span class="tag demo">★ 10 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Three queries, same 300,000-row table, wildly different work. Run each and read the <strong>"N ms in your browser"</strong> line under the result. One honest caveat: every Run also regenerates the 300k rows fresh, so compare the <em>differences</em> between variants, not absolute numbers - and run each twice, trusting the second reading.</p>
+
+    <div class="steps">
+      <div class="step"><p>Run variant 1: two output columns, March-only filter. Partition-prune plus column-prune - the funnel from Part 1, live.</p></div>
+      <div class="step"><p>Run variant 2: same aggregate, no date filter. Every row of all 8 months now gets scanned - watch the ms tick up.</p></div>
+      <div class="step"><p>Run variant 3: <code>SELECT *</code> with a sort. Every column of every row is touched - the layout's worst case, and the one BI tools commit by default.</p></div>
+      <div class="step"><p>Call the pattern: <strong>filter on the date, name your columns, never ship SELECT *.</strong> The ms counter is your cloud bill in miniature.</p></div>
+    </div>
+
+    <div class="sqlbox" data-setup="big" data-caption="Variant 1 - filtered and pruned: the shape every dashboard query should have.">
+      <pre class="sql-src">SELECT channel,
+       ROUND(SUM(quantity * unit_price), 0) AS march_revenue
+FROM big_orders
+WHERE order_date &gt;= DATE '2026-03-01'
+  AND order_date &lt; DATE '2026-04-01'
+GROUP BY channel;</pre>
+    </div>
+
+    <div class="sqlbox" data-setup="big" data-caption="Variant 2 - same question, no date filter: the whole table gets scanned.">
+      <pre class="sql-src">SELECT channel,
+       ROUND(SUM(quantity * unit_price), 0) AS all_time_revenue
+FROM big_orders
+GROUP BY channel;</pre>
+    </div>
+
+    <div class="sqlbox" data-setup="big" data-caption="Variant 3 - SELECT * plus a sort: every column, every row. The anti-pattern, timed.">
+      <pre class="sql-src">SELECT *
+FROM big_orders
+ORDER BY order_date DESC, unit_price DESC
+LIMIT 10;</pre>
+    </div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>In the cloud this is money, not milliseconds.</strong> On BigQuery, variant 2 scans roughly 8x the bytes of variant 1 (8 months vs 1), and variant 3 scans every column on top. Same table, same business question available either way - one phrasing costs 8-20x the other, forever, on every refresh.</p>
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>The pre-aggregation payoff <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">The founder's revenue dashboard runs 40 times a day, and it never needs row-level detail - only daily totals. So compute the daily totals <strong>once</strong>, store them, and point the dashboard at the summary. This is the hand-rolled materialized view, and it is the single highest-ROI move in warehouse tuning.</p>
+
+    <div class="steps">
+      <div class="step"><p>Run the build below: a CTAS collapses 300,000 order rows into a few hundred daily-summary rows, then the dashboard query reads the summary. Note the total ms.</p></div>
+      <div class="step"><p>Now run the second box: the exact same dashboard question asked of the RAW table. Compare - and remember the raw version is what runs 40 times a day if nobody builds the summary.</p></div>
+      <div class="step"><p>Your turn: in the third box, decide which build wins for a 40x/day dashboard, then prove it - rewrite the query to hit <code>daily_summary</code> and re-run.</p></div>
+    </div>
+
+    <div class="sqlbox" data-setup="big" data-caption="Build once, read forever: ~480 summary rows stand in for 300,000. In production a scheduler (b6) refreshes this nightly.">
+      <pre class="sql-src">CREATE TABLE daily_summary AS
+SELECT order_date, channel,
+       count(*)                   AS orders,
+       SUM(quantity * unit_price) AS revenue
+FROM big_orders
+WHERE status = 'completed'
+GROUP BY order_date, channel;
+
+SELECT strftime(order_date, '%Y-%m') AS month,
+       ROUND(SUM(revenue), 0)        AS revenue
+FROM daily_summary
+GROUP BY month
+ORDER BY month;</pre>
+    </div>
+
+    <div class="sqlbox" data-setup="big" data-caption="The same dashboard, asked of the raw table - this is what runs 40x a day without a summary layer.">
+      <pre class="sql-src">SELECT strftime(order_date, '%Y-%m') AS month,
+       ROUND(SUM(quantity * unit_price), 0) AS revenue
+FROM big_orders
+WHERE status = 'completed'
+GROUP BY month
+ORDER BY month;</pre>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Your turn: which build wins at 40 runs a day?<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Below is the dashboard query against raw. Do the founder's math: 40 runs a day of THIS, versus one nightly summary build plus 40 cheap reads. Then rebuild <code>daily_summary</code> in this box (copy the CTAS from above - fresh database per box, remember) and point the query at it.</p>
+        <div class="sqlbox" data-setup="big" data-caption="Edit me: prepend the daily_summary CTAS, then make the query read the summary instead of big_orders.">
+          <pre class="sql-src">SELECT strftime(order_date, '%Y-%m') AS month,
+       ROUND(SUM(quantity * unit_price), 0) AS revenue
+FROM big_orders
+WHERE status = 'completed'
+GROUP BY month
+ORDER BY month;</pre>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The trade you just made (and when NOT to make it)<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>You bought speed with staleness.</strong> The summary is only as fresh as its last rebuild. For a daily-revenue dashboard, nightly is plenty; for a fraud alert, it is not. Always name the freshness contract out loud.</li>
+          <li><strong>You bought speed with storage.</strong> Trivially cheap here - summaries are almost always tiny relative to their source.</li>
+          <li><strong>Skip it when</strong> the query is ad-hoc (runs once), needs row detail, or the base table is already small. Pre-aggregate the repeated, aggregate-shaped, big-table queries - which is exactly what dashboards are.</li>
+          <li><strong>Cloud version:</strong> Snowflake and BigQuery both offer materialized views that self-refresh, plus result caching for repeated identical queries. Same trade, managed for you, billed accordingly.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>EXPLAIN both Demo 2 dashboard queries (summary vs raw) and compare the scans - the plan difference IS the bill difference.</li>
+      <li>On <code>big_orders</code>, build a <code>monthly_channel_summary</code> (month × channel × status grain) and answer "refund rate by channel by month" from it.</li>
+      <li>Break pushdown on purpose: filter March using <code>strftime(order_date, '%Y-%m') = '2026-03'</code>, EXPLAIN it, and compare against the <code>&gt;=</code> / <code>&lt;</code> range version.</li>
+      <li>Find the most-refreshed dashboard at work and answer three questions: what grain does it actually need, does a summary table exist, and who owns its freshness contract?</li>
+      <li>Bring one slow or expensive query to b9 - the lakehouse session shows where files and formats fit into the same scan-less story.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Official sources covered</h2>
+    </div>
+    <p class="lede">This page teaches the performance-and-cost core of the source curricula, timed live on a real columnar engine instead of shown on slides. This page covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">365DS Intro to Data Warehousing - S3: partitioning, indexing &amp; query performance</span><span class="note">Parts 1 + 3, Demo 1 · pruning funnel, why-no-indexes, EXPLAIN</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">LinkedIn Learning "Advanced Snowflake" - micropartitions, clustering, table types</span><span class="note">Part 2 · topic-level coverage; re-verify specifics in vendor docs before production tuning</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">IBM Data Warehouse Fundamentals - Module 2: materialized views</span><span class="note">Part 2 card + Demo 2 · hand-rolled summary here; managed refresh is vendor-specific</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · A BigQuery table holds 3 years of orders, partitioned by date. Which change cuts the dashboard's scan bill the most?</p>
+      <button class="qopt" type="button">A · Add a b-tree index on order_date</button>
+      <button class="qopt" type="button">B · Add a WHERE range on the date column so foreign partitions are skipped entirely</button>
+      <button class="qopt" type="button">C · Rewrite SELECT * as SELECT DISTINCT *</button>
+      <p class="qwhy">Partition pruning skips whole months of data before a byte is read - the biggest lever. Warehouses do not use b-trees, and DISTINCT still scans everything.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why do columnar warehouses mostly skip b-tree indexes?</p>
+      <button class="qopt" type="button">A · Indexes are patented by OLTP vendors</button>
+      <button class="qopt" type="button">B · Warehouse tables are too small to benefit</button>
+      <button class="qopt" type="button">C · Analytics scans millions of rows, where zonemap block-skipping plus fast columnar scans beat row-by-row index hops - and indexes tax every bulk load</button>
+      <p class="qwhy">B-trees shine at finding a few rows. OLAP reads many rows and few columns, so min/max block metadata plus straight scans win, with zero maintenance cost at load time.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · The daily_summary table made the dashboard 40x cheaper. What did it cost you?</p>
+      <button class="qopt" type="button">A · Freshness - the summary only knows about data as of its last rebuild, so someone must own its refresh schedule</button>
+      <button class="qopt" type="button">B · Correctness - summaries are always approximate</button>
+      <button class="qopt" type="button">C · Nothing - pre-aggregation is free</button>
+      <p class="qwhy">Compute-once trades staleness for speed. The numbers are exact as of the last refresh - the summary is only wrong if nobody owns the freshness contract.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 8 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The whole art</b><span>Scan less, pay less. Every optimization arranges data so the engine can skip most of it.</span></div>
+      <div class="cheat-item"><b>Column pruning</b><span>Name your columns; a columnar engine reads only those. SELECT * defeats it every time.</span></div>
+      <div class="cheat-item"><b>Partition pruning</b><span>Filter on the partition column (the date) with plain ranges - foreign months never get opened.</span></div>
+      <div class="cheat-item"><b>Clustering / zonemaps</b><span>Sorted data gives tight min/max per block, so filters skip blocks. Snowflake micropartitions = same trick.</span></div>
+      <div class="cheat-item"><b>Cost model</b><span>Storage is pennies, scans are dollars. Copies are cheap; repeated recomputation is not.</span></div>
+      <div class="cheat-item"><b>Pre-aggregate</b><span>Repeated dashboard query? CTAS a summary at the needed grain, refresh nightly, point the dashboard there.</span></div>
+      <div class="cheat-item"><b>Materialized view</b><span>The managed version of your summary table: compute once, serve many, refresh on change - watch the freshness contract.</span></div>
+      <div class="cheat-item"><b>EXPLAIN</b><span>Free x-ray. Look for column projection at the scan and filters pushed into it - functions on the filter column can break both.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 8 of 10 · learn-data-warehouse-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b7-marts-serving.html">← Prev: Marts and serving</a> &nbsp;·&nbsp; <a href="b9-lakehouse-modern-stack.html">Next: Lakehouse and the modern stack →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/dw-seed.js?v=1"></script>
+<script src="../assets/warehouse-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>
