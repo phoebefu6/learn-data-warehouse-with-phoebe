@@ -45,6 +45,49 @@
       <h2>The brief</h2>
     </div>
     <p class="lede">Daybreak's board meets Friday. They want a one-page quarterly pack: <strong>monthly revenue trend, refund rate by channel, weekend share of orders, top products</strong>. The catch you now understand: none of those come cleanly off the app database. So you will build the whole warehouse that makes them a five-line query each - source to staging (b2) to star with surrogate keys and a date dimension (b3-b4) to a slowly changing customer dimension (b5) to served answers (b7), with the loading and performance instincts from b6 and b8 baked in.</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A star schema anatomy diagram showing dim_date, dim_customer and dim_product as dimension tables with surrogate keys feeding fct_order_line, the fact table holding line_revenue at one row per order line.">
+    <style>
+      .saTag { font: 700 10px Inter, sans-serif; fill: #5C6B78; letter-spacing: .08em; }
+      .saTagF { font: 700 10px Inter, sans-serif; fill: #3E6B8F; letter-spacing: .08em; }
+      .saDT { font: 700 12px Inter, sans-serif; fill: #1C2833; }
+      .saDS { font: 400 11px Inter, sans-serif; fill: #5C6B78; }
+      .saFT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+      .saFS { font: 400 11.5px Inter, sans-serif; fill: rgba(255,255,255,.85); }
+      .saN { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+    </style>
+    <rect x="0" y="0" width="880" height="320" fill="#F8FAFC"/>
+
+    <text class="saTag" x="160" y="28" text-anchor="middle">DIMENSION</text>
+    <rect x="50" y="40" width="220" height="64" rx="10" fill="#A5C2D8" stroke="#26435C" stroke-width="1.2"/>
+    <text class="saDT" x="160" y="64" text-anchor="middle">DIM_DATE</text>
+    <text class="saDS" x="160" y="82" text-anchor="middle">date_key (surrogate)</text>
+
+    <text class="saTag" x="420" y="28" text-anchor="middle">DIMENSION</text>
+    <rect x="310" y="40" width="220" height="64" rx="10" fill="#A5C2D8" stroke="#26435C" stroke-width="1.2"/>
+    <text class="saDT" x="420" y="64" text-anchor="middle">DIM_CUSTOMER</text>
+    <text class="saDS" x="420" y="82" text-anchor="middle">customer_key (surrogate)</text>
+
+    <text class="saTag" x="680" y="28" text-anchor="middle">DIMENSION</text>
+    <rect x="570" y="40" width="220" height="64" rx="10" fill="#A5C2D8" stroke="#26435C" stroke-width="1.2"/>
+    <text class="saDT" x="680" y="64" text-anchor="middle">DIM_PRODUCT</text>
+    <text class="saDS" x="680" y="82" text-anchor="middle">product_key (surrogate)</text>
+
+    <path d="M160,104 L320,160" fill="none" stroke="#5C6B78" stroke-width="1.4"/>
+    <path d="M420,104 L440,160" fill="none" stroke="#5C6B78" stroke-width="1.4"/>
+    <path d="M680,104 L560,160" fill="none" stroke="#5C6B78" stroke-width="1.4"/>
+
+    <text class="saTagF" x="440" y="150" text-anchor="middle">FACT</text>
+    <rect x="250" y="160" width="380" height="100" rx="10" fill="#3E6B8F"/>
+    <text class="saFT" x="440" y="196" text-anchor="middle">FCT_ORDER_LINE</text>
+    <text class="saFS" x="440" y="214" text-anchor="middle">line_revenue, one row per order line</text>
+    <text class="saFS" x="440" y="232" text-anchor="middle">date_key, customer_key, product_key</text>
+
+    <text class="saN" x="40" y="288">Three dimensions carry context; the fact carries one measurable event per order line and nothing else.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - dimensions carry context, the fact carries one measured event</figcaption>
+</figure>
+
     <div class="legend">
       <span class="pill solid">Live - presented in session</span>
       <span class="pill light">Self-study - read after class</span>
@@ -223,6 +266,32 @@ UNION ALL SELECT 'fct_order_line', count(*) FROM fct_order_line;</pre>
       <summary><span class="mode self">Self-study</span>The SCD flourish - preserve history on an upgrade<span class="mini">4 min</span><span class="caret">▶</span></summary>
       <div class="body">
         <p>The star above uses a plain <code>dim_customer</code>. In production you would run the b5 Type 2 pattern so an upgrade does not rewrite the past. Here it is on the pre-built <code>scd</code> star, standalone and re-runnable - Liam Ford (customer 2) moves Basic to Pro:</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A before and after showing why a plain dim_customer is risky when Liam Ford upgrades from Basic to Pro: a plain UPDATE overwrites the single row and destroys the history, while the SCD Type 2 pattern closes the old row on 2026-06-30 and inserts a new current row on 2026-07-01 so both versions stay queryable.">
+    <style>
+      .sdH { font: 700 13px Inter, sans-serif; }
+      .sdB { font: 400 12px Inter, sans-serif; fill: #1C2833; }
+      .sdN { font: 400 12px Inter, sans-serif; fill: #5C6B78; }
+    </style>
+    <rect x="0" y="0" width="880" height="300" fill="#F8FAFC"/>
+
+    <rect x="40" y="50" width="390" height="180" rx="12" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5"/>
+    <text class="sdH" x="58" y="84" fill="#991B1B">✗ Plain dim_customer</text>
+    <text class="sdB" x="58" y="114">UPDATE sets plan = 'Pro'</text>
+    <text class="sdB" x="58" y="134">one row, history overwritten</text>
+    <text class="sdB" x="58" y="154">you can no longer prove Basic</text>
+
+    <rect x="450" y="50" width="390" height="180" rx="12" fill="#EDF3F8" stroke="#3E6B8F" stroke-width="1.5"/>
+    <text class="sdH" x="468" y="84" fill="#26435C">✓ SCD Type 2 insert</text>
+    <text class="sdB" x="468" y="114">close old row: valid_to 06-30</text>
+    <text class="sdB" x="468" y="134">insert new row: Pro, is_current</text>
+    <text class="sdB" x="468" y="154">both versions stay queryable</text>
+
+    <text class="sdN" x="40" y="276">Liam Ford moves Basic to Pro on 2026-07-01 - the old row closes, a new row opens, nothing is overwritten.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - an UPDATE erases history, a Type 2 insert preserves it</figcaption>
+</figure>
+
         <div class="sqlbox" data-setup="scd" data-caption="Close out the old version, open a new one - history stays intact.">
           <pre class="sql-src">UPDATE dim_customer_scd
 SET valid_to = DATE '2026-06-30', is_current = FALSE
